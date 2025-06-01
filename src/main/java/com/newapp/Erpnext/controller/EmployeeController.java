@@ -110,6 +110,7 @@ public class EmployeeController {
         return employeeService.getEmployeeById(id);
     }
     
+
     @GetMapping("/api/{id}/salaries")
     @ResponseBody
     public List<Salary> getEmployeeSalaries(@PathVariable String id) {

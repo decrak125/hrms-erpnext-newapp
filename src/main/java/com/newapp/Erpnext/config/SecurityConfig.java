@@ -17,7 +17,7 @@ public class SecurityConfig {
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
                 .requestMatchers("/", "/login", "/api/auth/login", "/css/**", "/js/**", "/images/**", "/dashboard").permitAll()
-                .requestMatchers("/dashboard", "/api/**", "/suppliers", "/suppliers/**", "/quotations", "/quotations/**", "/purchase/**","/invoices","/invoices/**","/payments","/payments/**","/payments/submit","/employees","/employees/**").permitAll()
+                .requestMatchers("/dashboard", "/api/**", "/suppliers", "/suppliers/**", "/quotations", "/quotations/**", "/purchase/**","/invoices","/invoices/**","/payments","/payments/**","/payments/submit","/employees","/employees/**","/salaries","/salaries/**").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
