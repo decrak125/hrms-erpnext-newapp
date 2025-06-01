@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Gestion des Salaires - ERPNext Spring</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Gestion des Salaires</h2>
+            </div>
+            
+            <!-- Filtres -->
+            <div class="card bg-dark text-white mb-4">
+                <div class="card-body">
+                    <form id="filter-form" method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="month" class="form-label">Mois</label>
+                            <select class="form-select bg-dark text-white" id="month" name="month">
+                                <option value="">Tous les mois</option>
+                                <option th:each="monthOption : ${availableMonths}" 
+                                        th:value="${monthOption.value}" 
+                                        th:text="${monthOption.display}"
+                                        th:selected="${monthOption.value == selectedMonth}">Janvier 2023</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="employeeId" class="form-label">Employé</label>
+                            <select class="form-select bg-dark text-white" id="employeeId" name="employeeId">
+                                <option value="">Tous les employés</option>
+                                <option th:each="employee : ${employees}" 
+                                        th:value="${employee.id}" 
+                                        th:text="${employee.name}"
+                                        th:selected="${employee.id == selectedEmployee}">Nom de l'employé</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="department" class="form-label">Département</label>
+                            <select class="form-select bg-dark text-white" id="department" name="department">
+                                <option value="">Tous les départements</option>
+                                <option value="IT" th:selected="${selectedDepartment == 'IT'}">IT</option>
+                                <option value="HR" th:selected="${selectedDepartment == 'HR'}">Ressources Humaines</option>
+                                <option value="Finance" th:selected="${selectedDepartment == 'Finance'}">Finance</option>
+                                <option value="Marketing" th:selected="${selectedDepartment == 'Marketing'}">Marketing</option>
+                                <option value="Operations" th:selected="${selectedDepartment == 'Operations'}">Opérations</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Statut</label>
+                            <select class="form-select bg-dark text-white" id="status" name="status">
+                                <option value="">Tous les statuts</option>
+                                <option value="Paid" th:selected="${selectedStatus == 'Paid'}">Payé</option>
+                                <option value="Draft" th:selected="${selectedStatus == 'Draft'}">Brouillon</option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">Filtrer</button>
+                            <button type="reset" class="btn btn-secondary" id="reset-filters">Réinitialiser</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Résumé des totaux -->
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Brut</h5>
+                            <h3 class="card-text" th:text="${#numbers.formatDecimal(totalGross, 0, 'COMMA', 2, 'POINT')} + ' €'">0.00 €</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Net</h5>
+                            <h3 class="card-text" th:text="${#numbers.formatDecimal(totalNet, 0, 'COMMA', 2, 'POINT')} + ' €'">0.00 €</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Total Impôts</h5>
+                            <h3 class="card-text" th:text="${#numbers.formatDecimal(totalTax, 0, 'COMMA', 2, 'POINT')} + ' €'">0.00 €</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Liste des salaires -->
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Employé</th>
+                                    <th>Département</th>
+                                    <th>Mois</th>
+                                    <th>Date de paiement</th>
+                                    <th>Montant brut</th>
+                                    <th>Montant net</th>
+                                    <th>Impôts</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Utilisation de Thymeleaf pour itérer sur la liste des salaires -->
+                                <tr th:each="salary : ${salaryData}">
+                                    <td th:text="${salary.id}">SAL-001</td>
+                                    <td th:text="${salary.employeeName}">Nom de l'employé</td>
+                                    <td th:text="${salary.department}">Département</td>
+                                    <td th:text="${salary.month}">2023-01</td>
+                                    <td th:text="${#temporals.format(salary.paymentDate, 'dd/MM/yyyy')}">31/01/2023</td>
+                                    <td th:text="${#numbers.formatDecimal(salary.grossAmount, 0, 'COMMA', 2, 'POINT')} + ' €'">3000.00 €</td>
+                                    <td th:text="${#numbers.formatDecimal(salary.netAmount, 0, 'COMMA', 2, 'POINT')} + ' €'">2300.00 €</td>
+                                    <td th:text="${#numbers.formatDecimal(salary.taxAmount, 0, 'COMMA', 2, 'POINT')} + ' €'">700.00 €</td>
+                                    <td>
+                                        <span th:class="${salary.status == 'Paid' ? 'badge bg-success' : 'badge bg-warning'}" 
+                                              th:text="${salary.status}">Statut</span>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/employees/{id}(id=${salary.employeeId})}" class="btn btn-sm btn-info me-1">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a th:href="@{/salaries/pdf/{id}(id=${salary.id})}" class="btn btn-sm btn-secondary" target="_blank">
+                                            <i class="bi bi-file-pdf"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <!-- Message si aucun salaire n'est trouvé -->
+                                <tr th:if="${salaryData.empty}">
+                                    <td colspan="10" class="text-center">Aucun salaire trouvé</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script layout:fragment="javascript">
+        // Réinitialiser les filtres et soumettre le formulaire
+        document.getElementById('reset-filters').addEventListener('click', function() {
+            document.getElementById('filter-form').reset();
+            document.getElementById('filter-form').submit();
+        });
+    </script>
+</body>
+</html>
