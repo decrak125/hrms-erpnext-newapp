@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Commandes d'achat - ERPNext Spring</title>
+    <!-- Add DataTables CSS and JS from CDN -->
+    <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/moment/locale/fr.js"></script>
+    <th:block layout:fragment="css">
+        <!-- Add DataTables CSS from CDN -->
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.13.4/css/dataTables.bootstrap5.min.css">
+    </th:block>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Commandes d'achat</h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addPurchaseOrderModal">
+                    <i class="bi bi-plus-lg me-2"></i>Nouvelle commande
+                </button>
+            </div>
+            
+            <!-- Add supplier filter -->
+           <div class="form-group">
+    <label for="supplierFilter" class="form-label">Filtrer par fournisseur</label>
+    <div class="d-flex">
+        <select class="form-select bg-dark text-white" id="supplierFilter">
+            <option value="">Tous les fournisseurs</option>
+            <option th:each="supplier : ${suppliers}" 
+                    th:value="${supplier.name}"
+                    th:text="${supplier.name}">
+            </option>
+        </select>
+        <button id="resetFilter" class="btn btn-outline-secondary ms-2">
+            <i class="bi bi-x-circle"></i>
+        </button>
+    </div>
+</div>
+
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover" id="purchaseOrdersTable">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fournisseur</th>
+                                    <th>Date</th>
+                                    <th>Statut</th>
+                                    <th>% Reçu</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchase-orders-list">
+                                <!-- Les données seront chargées dynamiquement -->
+                                <tr th:each="order : ${purchaseOrders}" th:if="${purchaseOrders != null}">
+                                    <td th:text="${order.name}"></td>
+                                    <td th:text="${order.supplier}"></td>
+                                    <td th:text="${#temporals.format(order.creation, 'dd/MM/yyyy HH:mm')}"></td>
+                                    <td>
+                                        <span th:class="${'badge ' + (order.status == 'Completed' ? 'bg-success' : 
+                                                            order.status == 'To Receive and Bill' ? 'bg-primary' : 
+                                                            order.status == 'To Bill' ? 'bg-info' : 
+                                                            order.status == 'To Receive' ? 'bg-warning' : 
+                                                            order.status == 'Cancelled' ? 'bg-danger' : 'bg-secondary')}"
+                                              th:text="${order.status == 'To Receive and Bill' ? 'À recevoir et facturer' :
+                                                        order.status == 'To Bill' ? 'À facturer' :
+                                                        order.status == 'To Receive' ? 'À recevoir' :
+                                                        order.status == 'Completed' ? 'Terminé' :
+                                                        order.status == 'Cancelled' ? 'Annulé' :
+                                                        order.status == 'Draft' ? 'Brouillon' : order.status}">
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="progress bg-dark">
+                                            <div class="progress-bar bg-success" role="progressbar" 
+                                                 th:style="'width: ' + ${order.percentReceived} + '%'" 
+                                                 th:attr="aria-valuenow=${order.percentReceived}" 
+                                                 aria-valuemin="0" aria-valuemax="100" 
+                                                 th:text="${order.percentReceived} + '%'">
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/purchase/details/{id}(id=${order.name})}" class="btn btn-sm btn-info me-1">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a th:href="@{/purchase/edit/{id}(id=${order.name})}" class="btn btn-sm btn-warning me-1">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal pour ajouter une commande d'achat -->
+        <div class="modal fade" id="addPurchaseOrderModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content bg-dark text-white">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Nouvelle commande d'achat</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <!-- Formulaire de création de commande d'achat -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                        <button type="button" class="btn btn-primary" id="save-purchase-order">Enregistrer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add inline script for DataTables initialization -->
+    <th:block layout:fragment="script">
+        <script src="https://cdn.jsdelivr.net/npm/jquery@3.6.4/dist/jquery.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+        <script src="https://cdn.datatables.net/1.13.4/js/dataTables.bootstrap5.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/moment/moment.min.js"></script>
+        <script src="https://cdn.jsdelivr.net/npm/moment/locale/fr.js"></script>
+        
+        <script>
+            $(document).ready(function() {
+                // Initialize DataTables with sorting
+                var table = $('#purchaseOrdersTable').DataTable({
+                    language: {
+                        url: 'https://cdn.datatables.net/plug-ins/1.13.4/i18n/fr-FR.json'
+                    },
+                    order: [[2, 'desc']], // Sort by date column (index 2) in descending order
+                    columnDefs: [
+                        { orderable: false, targets: 5 } // Disable sorting on actions column
+                    ],
+                    dom: '<"top"f>rt<"bottom"lip>',
+                    responsive: true
+                });
+                
+                // Handle supplier filter
+                $('#supplierFilter').on('change', function() {
+                    var supplier = $(this).val();
+                    table.column(1).search(supplier).draw();
+                });
+                
+                // Réinitialiser le filtre
+                $('#resetFilter').on('click', function() {
+                    $('#supplierFilter').val('');
+                    table.column(1).search('').draw();
+                });
+            });
+        </script>
+    </th:block>
+</body>
+</html>

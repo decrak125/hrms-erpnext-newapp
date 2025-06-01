@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - ERPNext Spring</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <style>
+        :root {
+            --dark-primary: #121212;
+            --dark-secondary: #1e1e1e;
+            --dark-tertiary: #2d2d2d;
+            --dark-text: #ffffff;
+            --dark-accent: #4a90e2;
+            --dark-accent-hover: #3a7bc8;
+            --dark-muted: #6c757d;
+        }
+        body {
+            background-color: var(--dark-primary);
+            color: var(--dark-text);
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .login-container {
+            background-color: var(--dark-secondary);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 420px;
+            transition: transform 0.3s ease;
+        }
+        .login-container:hover {
+            transform: translateY(-5px);
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .login-header h2 {
+            color: var(--dark-accent);
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+        .login-header p {
+            color: var(--dark-muted);
+            font-size: 0.9rem;
+        }
+        .form-control {
+            background-color: var(--dark-tertiary);
+            border: 1px solid var(--dark-tertiary);
+            color: var(--dark-text);
+            padding: 0.8rem 1rem;
+            font-size: 1rem;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .form-control:focus {
+            background-color: var(--dark-tertiary);
+            color: var(--dark-text);
+            border-color: var(--dark-accent);
+            box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25);
+        }
+        .form-label {
+            color: var(--dark-text);
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+        }
+        .input-group {
+            margin-bottom: 1.5rem;
+        }
+        .input-group-text {
+            background-color: var(--dark-tertiary);
+            border: 1px solid var(--dark-tertiary);
+            color: var(--dark-muted);
+        }
+        .btn-primary {
+            background-color: var(--dark-accent);
+            border-color: var(--dark-accent);
+            width: 100%;
+            padding: 0.8rem;
+            font-size: 1rem;
+            font-weight: 600;
+            border-radius: 8px;
+            transition: all 0.3s ease;
+        }
+        .btn-primary:hover {
+            background-color: var(--dark-accent-hover);
+            border-color: var(--dark-accent-hover);
+            transform: translateY(-2px);
+        }
+        .alert {
+            margin-bottom: 1.5rem;
+            border-radius: 8px;
+            padding: 1rem;
+        }
+        .alert-danger {
+            background-color: rgba(220, 53, 69, 0.2);
+            border-color: rgba(220, 53, 69, 0.3);
+            color: #e17a85;
+        }
+        .alert-success {
+            background-color: rgba(40, 167, 69, 0.2);
+            border-color: rgba(40, 167, 69, 0.3);
+            color: #75c687;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="login-container">
+            <div class="login-header">
+                <h2>ERPNext Spring</h2>
+                <p>Connectez-vous pour accéder à votre espace</p>
+            </div>
+            
+            <div id="error-message" class="alert alert-danger" style="display: none;">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                Identifiants invalides. Veuillez réessayer.
+            </div>
+            <div id="success-message" class="alert alert-success" style="display: none;">
+                <i class="bi bi-check-circle-fill me-2"></i>
+                Vous avez été déconnecté avec succès.
+            </div>
+
+            <form id="login-form">
+                <div class="input-group mb-3">
+                    <span class="input-group-text">
+                        <i class="bi bi-person-fill"></i>
+                    </span>
+                    <div class="form-floating">
+                        <input type="text" class="form-control" id="username" name="username" placeholder="Nom d'utilisateur" required autofocus>
+                        <label for="username">Nom d'utilisateur</label>
+                    </div>
+                </div>
+                
+                <div class="input-group mb-4">
+                    <span class="input-group-text">
+                        <i class="bi bi-lock-fill"></i>
+                    </span>
+                    <div class="form-floating">
+                        <input type="password" class="form-control" id="password" name="password" placeholder="Mot de passe" required>
+                        <label for="password">Mot de passe</label>
+                    </div>
+                </div>
+                
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-box-arrow-in-right me-2"></i>
+                    Se connecter
+                </button>
+            </form>
+        </div>
+    </div>
+
+<script>
+    // Afficher le message de déconnexion si présent dans l'URL
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('logout')) {
+        document.getElementById('success-message').style.display = 'block';
+    }
+    if (urlParams.has('error')) {
+        document.getElementById('error-message').style.display = 'block';
+    }
+
+    // Gestion du formulaire de connexion
+    document.getElementById('login-form').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        
+        fetch('/api/auth/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                username: username,
+                password: password
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Identifiants invalides');
+            }
+            return response.json();
+        })
+        .then(data => {
+            // Stocker le token dans localStorage
+            localStorage.setItem('authToken', data.sessionId);
+            localStorage.setItem('userName', data.fullName);
+            
+            // Redirection vers le dashboard après connexion réussie
+            window.location.href = '/dashboard';
+        })
+        .catch(error => {
+            document.getElementById('error-message').style.display = 'block';
+        });
+    });
+
+    // Vérifier si l'utilisateur est déjà connecté
+    window.addEventListener('DOMContentLoaded', function() {
+        const authToken = localStorage.getItem('authToken');
+        if (authToken) {
+            // Vérifier si le token est valide
+            fetch('/api/auth/status', {
+                headers: {
+                    'Authorization': 'Bearer ' + authToken
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.authenticated) {
+                    window.location.href = '/dashboard';
+                } else {
+                    // Token invalide, supprimer
+                    localStorage.removeItem('authToken');
+                    localStorage.removeItem('userName');
+                }
+            });
+        }
+    });
+</script>
+</body>
+</html>

@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Fournisseurs - ERPNext Spring</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Fournisseurs</h2>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSupplierModal">
+                    <i class="bi bi-plus-lg me-2"></i>Nouveau fournisseur
+                </button>
+            </div>
+            
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Nom</th>
+                                    <th>Propriétaire</th>
+                                    <th>Groupe</th>
+                                    <th>Type</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Utilisation de Thymeleaf pour itérer sur la liste des fournisseurs -->
+                                <tr th:each="supplier : ${suppliers}">
+                                    <td th:text="${supplier.name}">Nom du fournisseur</td>
+                                    <td th:text="${supplier.owner}">Propriétaire</td>
+                                    <td th:text="${supplier.supplierGroup}">Groupe</td>
+                                    <td th:text="${supplier.supplierType}">Type</td>
+                                    <td>
+                                        <a th:href="@{/suppliers/{name}/quotations(name=${supplier.name})}" class="btn btn-sm btn-info me-1">
+                                            Liste de devis
+                                        </a>
+                                    </td>
+                                </tr>
+                                <!-- Message si aucun fournisseur n'est trouvé -->
+                                <tr th:if="${suppliers.empty}">
+                                    <td colspan="5" class="text-center">Aucun fournisseur trouvé</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    
+    <script layout:fragment="script">
+        // Charger les fournisseurs depuis l'API ERPNext
+        function loadSuppliers() {
+            const token = localStorage.getItem('authToken');
+            
+            fetch('/api/suppliers', {
+                headers: {
+                    'Authorization': 'Bearer ' + token
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                const suppliersList = document.getElementById('suppliers-list');
+                suppliersList.innerHTML = '';
+                
+                data.forEach(supplier => {
+                    suppliersList.innerHTML += `
+                        <tr>
+                            <td>${supplier.id}</td>
+                            <td>${supplier.name}</td>
+                            <td>${supplier.contact || '-'}</td>
+                            <td>${supplier.email}</td>
+                            <td>${supplier.phone || '-'}</td>
+                            <td><span class="badge bg-success">Actif</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-info me-1" onclick="viewSupplier('${supplier.id}')">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                <button class="btn btn-sm btn-warning me-1" onclick="editSupplier('${supplier.id}')">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-danger" onclick="deleteSupplier('${supplier.id}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+                });
+            })
+            .catch(error => console.error('Erreur lors du chargement des fournisseurs:', error));
+        }
+        
+        // Charger les fournisseurs au chargement de la page
+        document.addEventListener('DOMContentLoaded', loadSuppliers);
+        
+        // Enregistrer un nouveau fournisseur
+        document.getElementById('save-supplier').addEventListener('click', function() {
+            const token = localStorage.getItem('authToken');
+            const name = document.getElementById('supplier-name').value;
+            const contact = document.getElementById('supplier-contact').value;
+            const email = document.getElementById('supplier-email').value;
+            const phone = document.getElementById('supplier-phone').value;
+            
+            fetch('/api/suppliers', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + token
+                },
+                body: JSON.stringify({
+                    name: name,
+                    contact: contact,
+                    email: email,
+                    phone: phone
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                // Fermer le modal et recharger les fournisseurs
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addSupplierModal'));
+                modal.hide();
+                loadSuppliers();
+            })
+            .catch(error => console.error('Erreur lors de l\'enregistrement du fournisseur:', error));
+        });
+    </script>
+</body>
+</html>

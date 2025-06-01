@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Factures d'achat - ERPNext Spring</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Factures d'achat</h2>
+            </div>
+            
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Fournisseur</th>
+                                    <th>Date</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="purchase-invoices-list">
+                                <!-- Les données seront chargées dynamiquement -->
+                                <tr th:each="invoice : ${purchaseInvoices}" th:if="${purchaseInvoices != null}">
+                                    <td th:text="${invoice.name}"></td>
+                                    <td th:text="${invoice.supplier}"></td>
+                                    <td th:text="${#temporals.format(invoice.creation, 'dd/MM/yyyy HH:mm')}"></td>
+                                    <td>
+                                        <span th:class="${'badge ' + (invoice.status == 'Paid' ? 'bg-success' : 
+                                                            invoice.status == 'Unpaid' ? 'bg-danger' : 
+                                                            invoice.status == 'Overdue' ? 'bg-warning' : 
+                                                            invoice.status == 'Cancelled' ? 'bg-secondary' : 'bg-info')}"
+                                              th:text="${invoice.status == 'Paid' ? 'Payée' :
+                                                        invoice.status == 'Unpaid' ? 'Non payée' :
+                                                        invoice.status == 'Overdue' ? 'En retard' :
+                                                        invoice.status == 'Cancelled' ? 'Annulée' : invoice.status}">
+                                        </span>
+                                    </td>
+                                    <!-- Remplacer le bouton avec un lien direct vers le contrôleur -->
+                                    <td>
+                                        <a th:if="${!invoice.paid && invoice.status != 'Cancelled'}" 
+                                           th:href="@{/payments/create/{id}(id=${invoice.name})}" 
+                                           class="btn btn-sm btn-success me-1">
+                                            <i class="bi bi-credit-card"></i> Payer
+                                        </a>
+                                        <a th:href="@{/invoices/details/{id}(id=${invoice.name})}" 
+                                           class="btn btn-sm btn-info me-1">
+                                            <i class="bi bi-eye"></i> Détails
+                                        </a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal pour les détails de la facture -->
+        <div class="modal fade" id="invoiceDetailsModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content bg-dark text-white">
+                    <div class="modal-header">
+                        <h5 class="modal-title">Détails de la facture</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body" id="invoice-details-content">
+                        <!-- Les détails seront chargés dynamiquement -->
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script layout:fragment="script">
+        // Assurez-vous que Bootstrap est chargé
+        let bootstrapModal;
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialiser la modal Bootstrap
+            bootstrapModal = new bootstrap.Modal(document.getElementById('invoiceDetailsModal'));
+            
+            // Ajouter les écouteurs d'événements pour les boutons de détails
+            document.querySelectorAll('[data-id]').forEach(button => {
+                button.addEventListener('click', function() {
+                    viewInvoiceDetails(this.getAttribute('data-id'));
+                });
+            });
+        });
+
+        // Fonction modifiée pour afficher les détails
+        function viewInvoiceDetails(id) {
+            const detailsContent = document.getElementById('invoice-details-content');
+            detailsContent.innerHTML = `<p class="text-center"><i class="bi bi-hourglass-split me-2"></i>Chargement des détails...</p>`;
+            
+            // Afficher la modal
+            bootstrapModal.show();
+            
+            // Charger les détails
+            fetch(`/payments/api/invoice-details/${id}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Erreur réseau');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        const invoice = data.data;
+                        detailsContent.innerHTML = generateInvoiceDetailsHTML(invoice);
+                    } else {
+                        throw new Error(data.message || 'Erreur de chargement');
+                    }
+                })
+                .catch(error => {
+                    detailsContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            ${error.message}
+                        </div>
+                    `;
+                });
+        }
+
+        // Fonction pour générer le HTML des détails
+        function generateInvoiceDetailsHTML(invoice) {
+            return `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5>Informations générales</h5>
+                        <p><strong>Facture:</strong> ${invoice.name}</p>
+                        <p><strong>Fournisseur:</strong> ${invoice.supplier}</p>
+                        <p><strong>Date:</strong> ${formatDate(invoice.posting_date)}</p>
+                        <p><strong>Statut:</strong> ${getStatusBadge(invoice.status)}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h5>Montants</h5>
+                        <p><strong>Total HT:</strong> ${invoice.net_total}</p>
+                        <p><strong>Taxes:</strong> ${invoice.total_taxes_and_charges || 0}</p>
+                        <p><strong>Total TTC:</strong> ${invoice.grand_total}</p>
+                        <p><strong>Montant payé:</strong> ${invoice.paid_amount || 0}</p>
+                    </div>
+                </div>
+            `;
+        }
+    </script>
+        
+        // Charger les factures d'achat
+        function loadPurchaseInvoices() {
+            fetch('/invoices/api')
+            .then(response => response.json())
+            .then(data => {
+                const invoicesList = document.getElementById('purchase-invoices-list');
+                invoicesList.innerHTML = '';
+                
+                data.forEach(invoice => {
+                    const statusBadge = getStatusBadge(invoice.status);
+                    const payButton = !invoice.paid && invoice.status !== 'Cancelled' ? 
+                        `<a href="/payments/create/${invoice.name}" class="btn btn-sm btn-success me-1">
+                            <i class="bi bi-credit-card"></i> Payer
+                         </a>` : '';
+                    
+                    invoicesList.innerHTML += `
+                        <tr>
+                            <td>${invoice.name}</td>
+                            <td>${invoice.supplier}</td>
+                            <td>${formatDate(invoice.creation)}</td>
+                            <td>${statusBadge}</td>
+                            <td>
+                                ${payButton}
+                                <!-- Replace the details button in the table -->
+                                <a th:href="@{/invoices/details/{id}(id=${invoice.name})}" 
+                                   class="btn btn-sm btn-info me-1">
+                                    <i class="bi bi-eye"></i> Détails
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                });
+            })
+            .catch(error => console.error('Erreur lors du chargement des factures d\'achat:', error));
+        }
+        
+        // Formater la date
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('fr-FR', { 
+                day: '2-digit', 
+                month: '2-digit', 
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // Obtenir le badge de statut
+        function getStatusBadge(status) {
+            switch(status) {
+                case 'Paid':
+                    return '<span class="badge bg-success">Payée</span>';
+                case 'Unpaid':
+                    return '<span class="badge bg-danger">Non payée</span>';
+                case 'Overdue':
+                    return '<span class="badge bg-warning">En retard</span>';
+                case 'Cancelled':
+                    return '<span class="badge bg-secondary">Annulée</span>';
+                default:
+                    return '<span class="badge bg-info">' + status + '</span>';
+            }
+        }
+        
+        // Afficher les détails d'une facture
+        function viewInvoiceDetails(id) {
+            console.log('Voir les détails de la facture:', id);
+            
+            const detailsContent = document.getElementById('invoice-details-content');
+            detailsContent.innerHTML = `<p class="text-center"><i class="bi bi-hourglass-split me-2"></i>Chargement des détails...</p>`;
+            
+            // Afficher la modal
+            const modal = new bootstrap.Modal(document.getElementById('invoiceDetailsModal'));
+            modal.show();
+            
+            // Charger les détails de la facture
+            fetch(`/payments/api/invoice-details/${id}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    const invoice = data.data;
+                    
+                    let itemsHtml = '';
+                    if (invoice.items && Array.isArray(invoice.items)) {
+                        itemsHtml = `
+                            <h5 class="mt-4">Articles</h5>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-sm">
+                                    <thead>
+                                        <tr>
+                                            <th>Article</th>
+                                            <th>Quantité</th>
+                                            <th>Prix</th>
+                                            <th>Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                        `;
+                        
+                        invoice.items.forEach(item => {
+                            itemsHtml += `
+                                <tr>
+                                    <td>${item.item_name || item.item_code}</td>
+                                    <td>${item.qty} ${item.uom || ''}</td>
+                                    <td>${item.rate}</td>
+                                    <td>${item.amount}</td>
+                                </tr>
+                            `;
+                        });
+                        
+                        itemsHtml += `
+                                    </tbody>
+                                </table>
+                            </div>
+                        `;
+                    }
+                    
+                    detailsContent.innerHTML = `
+                        <div class="row">
+                            <div class="col-md-6">
+                                <h5>Informations générales</h5>
+                                <p><strong>Facture:</strong> ${invoice.name}</p>
+                                <p><strong>Fournisseur:</strong> ${invoice.supplier}</p>
+                                <p><strong>Date:</strong> ${formatDate(invoice.posting_date)}</p>
+                                <p><strong>Statut:</strong> ${getStatusBadge(invoice.status)}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Montants</h5>
+                                <p><strong>Total HT:</strong> ${invoice.net_total}</p>
+                                <p><strong>Taxes:</strong> ${invoice.total_taxes_and_charges || 0}</p>
+                                <p><strong>Total TTC:</strong> ${invoice.grand_total}</p>
+                                <p><strong>Montant payé:</strong> ${invoice.paid_amount || 0}</p>
+                            </div>
+                        </div>
+                        ${itemsHtml}
+                        <div class="mt-4">
+                            <h5>Informations supplémentaires</h5>
+                            <p><strong>Remarques:</strong> ${invoice.remarks || 'Aucune remarque'}</p>
+                        </div>
+                    `;
+                    
+                    // Ajouter un bouton de paiement si la facture n'est pas payée et n'est pas annulée
+                    if (invoice.status !== 'Paid' && invoice.status !== 'Cancelled') {
+                        const footerEl = document.querySelector('#invoiceDetailsModal .modal-footer');
+                        
+                        // Supprimer l'ancien bouton de paiement s'il existe
+                        const oldPayBtn = footerEl.querySelector('.btn-success');
+                        if (oldPayBtn) {
+                            oldPayBtn.remove();
+                        }
+                        
+                        // Ajouter le nouveau bouton de paiement
+                        const payBtn = document.createElement('button');
+                        payBtn.className = 'btn btn-success';
+                        payBtn.innerHTML = '<i class="bi bi-credit-card me-2"></i>Payer cette facture';
+                        payBtn.onclick = function() {
+                            createPayment(invoice.name);
+                        };
+                        
+                        footerEl.prepend(payBtn);
+                    }
+                } else {
+                    detailsContent.innerHTML = `
+                        <div class="alert alert-danger">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            Erreur lors du chargement des détails: ${data.message || 'Erreur inconnue'}
+                        </div>
+                    `;
+                }
+            })
+            .catch(error => {
+                console.error('Erreur lors du chargement des détails:', error);
+                detailsContent.innerHTML = `
+                    <div class="alert alert-danger">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                        Une erreur est survenue lors du chargement des détails
+                    </div>
+                `;
+            });
+        }
+        
+        // Charger les données au chargement de la page
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPurchaseInvoices();
+        });
+    </script>
+</body>
+</html>

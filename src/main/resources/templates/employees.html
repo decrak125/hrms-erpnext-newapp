@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Employés - ERPNext Spring</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Gestion des Employés</h2>
+            </div>
+            
+            <!-- Filtres -->
+            <div class="card bg-dark text-white mb-4">
+                <div class="card-body">
+                    <form id="filter-form" method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="department" class="form-label">Département</label>
+                            <select class="form-select bg-dark text-white" id="department" name="department">
+                                <option value="">Tous les départements</option>
+                                <option value="IT">IT</option>
+                                <option value="HR">Ressources Humaines</option>
+                                <option value="Finance">Finance</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="Operations">Opérations</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label for="status" class="form-label">Statut</label>
+                            <select class="form-select bg-dark text-white" id="status" name="status">
+                                <option value="">Tous les statuts</option>
+                                <option value="Active">Actif</option>
+                                <option value="On Leave">En congé</option>
+                                <option value="Terminated">Terminé</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="searchQuery" class="form-label">Recherche</label>
+                            <input type="text" class="form-control bg-dark text-white" id="searchQuery" name="searchQuery" placeholder="Nom, email, téléphone...">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="startDate" class="form-label">Date d'embauche (début)</label>
+                            <input type="date" class="form-control bg-dark text-white" id="startDate" name="startDate">
+                        </div>
+                        <div class="col-md-3">
+                            <label for="endDate" class="form-label">Date d'embauche (fin)</label>
+                            <input type="date" class="form-control bg-dark text-white" id="endDate" name="endDate">
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary me-2">Filtrer</button>
+                            <button type="reset" class="btn btn-secondary" id="reset-filters">Réinitialiser</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Liste des employés -->
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Nom</th>
+                                    <th>Département</th>
+                                    <th>Poste</th>
+                                    <th>Date d'embauche</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <!-- Utilisation de Thymeleaf pour itérer sur la liste des employés -->
+                                <tr th:each="employee : ${employees}">
+                                    <td th:text="${employee.id}">EMP-001</td>
+                                    <td th:text="${employee.name}">Nom de l'employé</td>
+                                    <td th:text="${employee.department}">Département</td>
+                                    <td th:text="${employee.position}">Poste</td>
+                                    <td th:text="${#temporals.format(employee.hireDate, 'dd/MM/yyyy')}">01/01/2023</td>
+                                    <td>
+                                        <span th:class="${employee.status == 'Active' ? 'badge bg-success' : (employee.status == 'On Leave' ? 'badge bg-warning' : 'badge bg-danger')}" 
+                                              th:text="${employee.status}">Statut</span>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/employees/{id}(id=${employee.id})}" class="btn btn-sm btn-info me-1">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        <a th:href="@{/employees/{id}/pdf(id=${employee.id})}" class="btn btn-sm btn-secondary" target="_blank">
+                                            <i class="bi bi-file-pdf"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                                <!-- Message si aucun employé n'est trouvé -->
+                                <tr th:if="${employees.empty}">
+                                    <td colspan="7" class="text-center">Aucun employé trouvé</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script layout:fragment="javascript">
+        // Réinitialiser les filtres et soumettre le formulaire
+        document.getElementById('reset-filters').addEventListener('click', function() {
+            document.getElementById('filter-form').reset();
+            document.getElementById('filter-form').submit();
+        });
+    </script>
+</body>
+</html>

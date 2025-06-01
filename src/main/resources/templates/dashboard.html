@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{/layout/main}">
+<head>
+    <title>Tableau de bord - ERPNext Spring</title>
+    <th:block layout:fragment="css">
+        <link href="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css" rel="stylesheet">
+    </th:block>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="row g-4">
+                <!-- Widgets statistiques -->
+                <div class="col-md-3">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Utilisateurs</h5>
+                            <p class="card-text display-6">150</p>
+                            <p class="card-text text-success"><i class="bi bi-arrow-up"></i> +5% cette semaine</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Produits</h5>
+                            <p class="card-text display-6">1,250</p>
+                            <p class="card-text text-info"><i class="bi bi-arrow-right"></i> Stable</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Ventes</h5>
+                            <p class="card-text display-6">€45K</p>
+                            <p class="card-text text-success"><i class="bi bi-arrow-up"></i> +12% ce mois</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Commandes</h5>
+                            <p class="card-text display-6">325</p>
+                            <p class="card-text text-danger"><i class="bi bi-arrow-down"></i> -3% cette semaine</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Graphiques et tableaux -->
+                <div class="col-md-8">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Activité récente</h5>
+                            <div class="table-responsive">
+                                <table class="table table-dark table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Action</th>
+                                            <th>Utilisateur</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            <td>#1234</td>
+                                            <td>Nouvelle commande</td>
+                                            <td>Jean Dupont</td>
+                                            <td>2023-11-15</td>
+                                        </tr>
+                                        <tr>
+                                            <td>#1233</td>
+                                            <td>Mise à jour produit</td>
+                                            <td>Marie Martin</td>
+                                            <td>2023-11-15</td>
+                                        </tr>
+                                        <tr>
+                                            <td>#1232</td>
+                                            <td>Nouveau client</td>
+                                            <td>Pierre Durand</td>
+                                            <td>2023-11-14</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Tâches en attente</h5>
+                            <ul class="list-group list-group-flush">
+                                <li class="list-group-item bg-dark text-white border-light">
+                                    <i class="bi bi-check-circle text-success"></i> Valider les commandes du jour
+                                </li>
+                                <li class="list-group-item bg-dark text-white border-light">
+                                    <i class="bi bi-exclamation-circle text-warning"></i> Mettre à jour l'inventaire
+                                </li>
+                                <li class="list-group-item bg-dark text-white border-light">
+                                    <i class="bi bi-clock text-info"></i> Planifier la réunion hebdomadaire
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-12">
+                    <div class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h5 class="card-title">Calendrier des événements</h5>
+                            <!-- Add event button -->
+                            <button class="btn btn-primary mb-3" id="addEventBtn">
+                                <i class="bi bi-plus-circle"></i> Ajouter un événement
+                            </button>
+                            <div id="calendar" style="background-color: #2d2d2d; color: white;"></div>
+                        </div>
+                    </div>
+                </div>
+            
+                <!-- Add Event Modal -->
+                <div class="modal fade" id="eventModal" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content bg-dark text-white">
+                            <div class="modal-header">
+                                <h5 class="modal-title">Ajouter un événement</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <form id="eventForm">
+                                    <div class="mb-3">
+                                        <label class="form-label">Titre</label>
+                                        <input type="text" class="form-control bg-dark text-white" id="eventTitle" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Date début</label>
+                                        <input type="datetime-local" class="form-control bg-dark text-white" id="eventStart" required>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Date fin</label>
+                                        <input type="datetime-local" class="form-control bg-dark text-white" id="eventEnd">
+                                    </div>
+                                </form>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                                <button type="button" class="btn btn-primary" id="saveEvent">Enregistrer</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            
+                <th:block layout:fragment="script">
+                    <!-- Add jQuery and Bootstrap JS -->
+                    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+                    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+                    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
+                    
+                    <script th:inline="javascript">
+                        document.addEventListener('DOMContentLoaded', function() {
+                            var calendarEl = document.getElementById('calendar');
+                            var calendar = new FullCalendar.Calendar(calendarEl, {
+                                initialView: 'dayGridMonth',
+                                locale: 'fr',
+                                headerToolbar: {
+                                    left: 'prev,next today',
+                                    center: 'title',
+                                    right: 'dayGridMonth,timeGridWeek,timeGridDay'
+                                },
+                                buttonText: {
+                                    today: "Aujourd'hui",
+                                    month: 'Mois',
+                                    week: 'Semaine',
+                                    day: 'Jour'
+                                },
+                                themeSystem: 'bootstrap5',
+                                height: 500,
+                                selectable: true,
+                                editable: true,
+                                events: [
+                                    {
+                                        title: 'Réunion équipe',
+                                        start: new Date().toISOString().split('T')[0] + 'T10:00:00',
+                                        end: new Date().toISOString().split('T')[0] + 'T12:00:00',
+                                        color: '#4a90e2'
+                                    }
+                                ],
+                                dateClick: function(info) {
+                                    const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+                                    $('#eventStart').val(info.dateStr + 'T09:00');
+                                    $('#eventEnd').val(info.dateStr + 'T10:00');
+                                    modal.show();
+                                }
+                            });
+                            
+                            calendar.render();
+            
+                            // Add Event Button Handler
+                            document.getElementById('addEventBtn').addEventListener('click', function() {
+                                const modal = new bootstrap.Modal(document.getElementById('eventModal'));
+                                modal.show();
+                            });
+            
+                            // Save Event Handler
+                            document.getElementById('saveEvent').addEventListener('click', function() {
+                                const title = document.getElementById('eventTitle').value;
+                                const start = document.getElementById('eventStart').value;
+                                const end = document.getElementById('eventEnd').value;
+            
+                                if (title && start) {
+                                    calendar.addEvent({
+                                        title: title,
+                                        start: start,
+                                        end: end || null,
+                                        color: '#' + Math.floor(Math.random()*16777215).toString(16)
+                                    });
+                                    const modal = bootstrap.Modal.getInstance(document.getElementById('eventModal'));
+                                    modal.hide();
+                                    document.getElementById('eventForm').reset();
+                                }
+                            });
+                        });
+                    </script>
+                </th:block>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

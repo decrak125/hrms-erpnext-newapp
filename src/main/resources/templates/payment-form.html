@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Créer un paiement - ERPNext Spring</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Créer un paiement</h2>
+                <a href="/invoices" class="btn btn-outline-light">
+                    <i class="bi bi-arrow-left me-2"></i>Retour aux factures
+                </a>
+            </div>
+            
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <!-- Alert messages -->
+                    <div th:if="${error}" class="alert alert-danger">
+                        <p th:text="${error}"></p>
+                        
+                        <!-- Display detailed logs if available -->
+                        <div th:if="${logs}" class="mt-3">
+                            <button class="btn btn-sm btn-outline-danger" type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#errorLogs" aria-expanded="false" aria-controls="errorLogs">
+                                Afficher les détails techniques
+                            </button>
+                            <div class="collapse mt-2" id="errorLogs">
+                                <div class="card card-body bg-dark text-white">
+                                    <pre th:text="${logs}" style="white-space: pre-wrap;"></pre>
+                                    
+                                    <!-- API Response if available -->
+                                    <div th:if="${apiResponse}" class="mt-2">
+                                        <h6>Réponse API:</h6>
+                                        <pre th:text="${apiResponse}" style="white-space: pre-wrap;"></pre>
+                                    </div>
+                                    
+                                    <!-- Stack trace if available -->
+                                    <div th:if="${stackTrace}" class="mt-2">
+                                        <h6>Stack Trace:</h6>
+                                        <pre th:text="${stackTrace}" style="white-space: pre-wrap;"></pre>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Option to submit existing payment if creation succeeded but submission failed -->
+                        <div th:if="${paymentId}" class="mt-3">
+                            <p>Le paiement a été créé mais n'a pas pu être soumis. Vous pouvez essayer de le soumettre à nouveau:</p>
+                            <form th:action="@{/payments/submit-existing/{id}(id=${paymentId})}" method="POST">
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="bi bi-arrow-repeat me-2"></i>Soumettre le paiement
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+
+                    <div th:if="${success}" class="alert alert-success alert-dismissible fade show" role="alert">
+                        <i class="bi bi-check-circle-fill me-2"></i>
+                        <span th:text="${message}"></span>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    
+                    <form id="payment-form" action="/payments/submit" method="POST">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <h5>Informations de la facture</h5>
+                                <div class="mb-3">
+                                    <label class="form-label">Référence facture</label>
+                                    <input type="text" class="form-control bg-dark text-white" name="invoiceReference" th:value="${payment.invoiceReference}" readonly>
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Fournisseur</label>
+                                    <input type="text" class="form-control bg-dark text-white" name="party" th:value="${payment.party}" readonly>
+                                    <input type="hidden" name="partyType" value="Supplier">
+                                </div>
+                                <div class="mb-3">
+                                    <label class="form-label">Entreprise</label>
+                                    <input type="text" class="form-control bg-dark text-white" name="company" th:value="${payment.company}" readonly>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <h5>Détails du paiement</h5>
+                                <div class="mb-3">
+                                    <label for="mode" class="form-label">Mode de paiement</label>
+                                    <select class="form-select bg-dark text-white" name="modeOfPayment" required>
+                                        <option value="Cash">Espèces</option>
+                                        <option value="Bank Draft">Chèque</option>
+                                        <option value="Credit Card">Carte de crédit</option>
+                                        <option value="Wire Transfer">Virement bancaire</option>
+                                    </select>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="paidAmount" class="form-label">Montant à payer</label>
+                                    <input type="number" class="form-control bg-dark text-white" name="paidAmount" th:value="${payment.paidAmount}" step="0.01" required>
+                                </div>
+                                <div class="mb-3">
+                                    <label for="reference" class="form-label">Référence du paiement</label>
+                                    <input type="text" class="form-control bg-dark text-white" name="referenceNo" placeholder="Ex: PAY-123">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="paymentDate" class="form-label">Date du paiement</label>
+                                    <input type="date" class="form-control bg-dark text-white" name="paymentDate" th:value="${#dates.format(#dates.createNow(), 'yyyy-MM-dd')}" required>
+                                </div>
+                                <!-- Hidden fields -->
+                                <input type="hidden" name="paymentType" value="Pay">
+                                <!-- Update account names to match what exists in ERPNext -->
+                                <input type="hidden" name="paidFrom" value="Cash - FKMD">
+                                <input type="hidden" name="paidTo" value="Creditors - FKMD">
+                            </div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-end">
+                            <a href="/invoices" class="btn btn-outline-light me-2">Annuler</a>
+                            <button type="submit" class="btn btn-success">
+                                <i class="bi bi-check-circle me-2"></i>Effectuer le paiement
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
