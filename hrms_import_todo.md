@@ -3,7 +3,7 @@
 ## 1. Fonction Upload et Validation des Fichiers
 
 ### 1.1 Interface Upload
-- [ ] Créer endpoint POST `/api/import/upload`
+- [ ] Créer endpoint POST `/api/method/frappe.utils.file_manager.upload_file`
 - [ ] Implémenter drag & drop avec 3 champs séparés :
   - [ ] Fichier Employés (fichier1.csv)
   - [ ] Fichier Structure Salariale (fichier2.csv) 
@@ -225,12 +225,28 @@
 
 ## 4. Fonction Import vers ERPNext
 
-### 4.1 Ordre d'importation avec Auto-Création (respecter dépendances)
-1. [ ] **Company** (créer automatiquement si manquante)
-2. [ ] **Salary Components** (créer automatiquement depuis fichier2)  
-3. [ ] **Employee** (créer/mettre à jour selon existence)
-4. [ ] **Salary Structure + Components** (créer si manquante)
-5. [ ] **Salary Structure Assignment** (dépend de tous les précédents)
+- [ ] **1. Company**  
+  - [ ] Vérifier existence via `GET /api/resource/Company?filters=[["name","=","My Company"]]`  
+  - [ ] Si 404, créer avec `POST /api/resource/Company`  
+  - [ ] Valider que la currency (`MGA`) et le pays (`Madagascar`) sont configurés.
+
+- [ ] **2. Salary Components**  
+  - [ ] Pour chaque composant dans `fichier2.csv` :  
+    - [ ] Vérifier existence via `GET /api/resource/Salary Component/{name}`  
+    - [ ] Si 404, créer avec `POST /api/resource/Salary Component`  
+    - [ ] **Convertir formules** (ex: `SB` → `base`).
+
+- [ ] **3. Employees**  
+  - [ ] Importer via `POST /api/resource/Employee`  
+  - [ ] **Gérer les dépendances** : `company` et `date_of_joining` obligatoires.
+
+- [ ] **4. Salary Structure**  
+  - [ ] Créer avec `POST /api/resource/Salary Structure`  
+  - [ ] **Lier les Components** via le champ `earnings`/`deductions`.
+
+- [ ] **5. Salary Slips**  
+  - [ ] Créer avec `POST /api/resource/Salary Slip`  
+  - [ ] **Vérifier les clés étrangères** : `employee`, `salary_structure`.
 
 ### 4.2 Appels API ERPNext
 - [ ] Configurer authentification ERPNext (API Key/Token)
