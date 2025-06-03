@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" 
+      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout"
+      layout:decorate="~{layout/main}">
+<head>
+    <title>Import HRMS vers ERPNext</title>
+    <style>
+        .upload-container {
+            margin: 20px 0;
+            padding: 20px;
+            border: 2px dashed #ccc;
+            border-radius: 5px;
+            text-align: center;
+            background-color: #f8f9fa;
+            transition: background-color 0.3s;
+        }
+        .upload-container.drag-over {
+            background-color: #e9ecef;
+            border-color: #6c757d;
+        }
+        .file-input {
+            display: none;
+        }
+        .upload-label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #495057;
+        }
+        .upload-btn {
+            display: inline-block;
+            padding: 8px 20px;
+            background-color: #007bff;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .upload-btn:hover {
+            background-color: #0069d9;
+        }
+        .file-info {
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #6c757d;
+        }
+        .file-name {
+            font-weight: bold;
+            color: #28a745;
+            word-break: break-all;
+        }
+        .error-message {
+            color: #dc3545;
+            margin-top: 5px;
+        }
+        .success-message {
+            color: #28a745;
+            margin-top: 5px;
+        }
+        .progress {
+            margin-top: 10px;
+            height: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container">
+            <h1 class="mt-4 mb-4">Import HRMS vers ERPNext</h1>
+            
+            <div class="alert alert-info">
+                <p><strong>Instructions:</strong> Veuillez télécharger les trois fichiers CSV requis pour l'importation.</p>
+                <ul>
+                    <li>Fichier Employés (.csv) - Contient les informations des employés</li>
+                    <li>Fichier Structure Salariale (.csv) - Contient les structures de salaire</li>
+                    <li>Fichier Attribution Salaires (.csv) - Contient les attributions de salaire</li>
+                </ul>
+                <p>Taille maximale: 10MB par fichier. Format accepté: CSV uniquement.</p>
+            </div>
+            
+            <form id="uploadForm" enctype="multipart/form-data">
+                <!-- Fichier Employés -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Fichier Employés</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="employeeUpload" class="upload-container">
+                            <label class="upload-label">Glissez-déposez le fichier des employés ici</label>
+                            <input type="file" id="employeeFile" name="employeeFile" class="file-input" accept=".csv">
+                            <div id="employeeFileInfo" class="file-info">Aucun fichier sélectionné</div>
+                            <label for="employeeFile" class="upload-btn">Parcourir</label>
+                            <div id="employeeError" class="error-message"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Fichier Structure Salariale -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Fichier Structure Salariale</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="salaryStructureUpload" class="upload-container">
+                            <label class="upload-label">Glissez-déposez le fichier de structure salariale ici</label>
+                            <input type="file" id="salaryStructureFile" name="salaryStructureFile" class="file-input" accept=".csv">
+                            <div id="salaryStructureFileInfo" class="file-info">Aucun fichier sélectionné</div>
+                            <label for="salaryStructureFile" class="upload-btn">Parcourir</label>
+                            <div id="salaryStructureError" class="error-message"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Fichier Attribution Salaires -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5>Fichier Attribution Salaires</h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="salaryAssignmentUpload" class="upload-container">
+                            <label class="upload-label">Glissez-déposez le fichier d'attribution des salaires ici</label>
+                            <input type="file" id="salaryAssignmentFile" name="salaryAssignmentFile" class="file-input" accept=".csv">
+                            <div id="salaryAssignmentFileInfo" class="file-info">Aucun fichier sélectionné</div>
+                            <label for="salaryAssignmentFile" class="upload-btn">Parcourir</label>
+                            <div id="salaryAssignmentError" class="error-message"></div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="text-center mb-4">
+                    <button type="submit" id="submitBtn" class="btn btn-primary btn-lg">Importer les fichiers</button>
+                </div>
+                
+                <div id="uploadStatus" class="alert alert-success" style="display: none;"></div>
+                <div id="uploadError" class="alert alert-danger" style="display: none;"></div>
+                
+                <div id="uploadProgress" style="display: none;">
+                    <h5>Progression du téléchargement</h5>
+                    <div class="progress">
+                        <div id="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" style="width: 0%"></div>
+                    </div>
+                </div>
+            </form>
+        </div>
+        
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
+                // Références aux éléments DOM
+                const uploadForm = document.getElementById('uploadForm');
+                const employeeFile = document.getElementById('employeeFile');
+                const salaryStructureFile = document.getElementById('salaryStructureFile');
+                const salaryAssignmentFile = document.getElementById('salaryAssignmentFile');
+                const employeeUpload = document.getElementById('employeeUpload');
+                const salaryStructureUpload = document.getElementById('salaryStructureUpload');
+                const salaryAssignmentUpload = document.getElementById('salaryAssignmentUpload');
+                const employeeFileInfo = document.getElementById('employeeFileInfo');
+                const salaryStructureFileInfo = document.getElementById('salaryStructureFileInfo');
+                const salaryAssignmentFileInfo = document.getElementById('salaryAssignmentFileInfo');
+                const employeeError = document.getElementById('employeeError');
+                const salaryStructureError = document.getElementById('salaryStructureError');
+                const salaryAssignmentError = document.getElementById('salaryAssignmentError');
+                const uploadStatus = document.getElementById('uploadStatus');
+                const uploadError = document.getElementById('uploadError');
+                const uploadProgress = document.getElementById('uploadProgress');
+                const progressBar = document.getElementById('progressBar');
+                
+                // Fonction pour gérer le drag & drop
+                function setupDragAndDrop(dropZone, fileInput, fileInfo, errorElement) {
+                    // Empêcher le comportement par défaut du navigateur
+                    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+                        dropZone.addEventListener(eventName, preventDefaults, false);
+                    });
+                    
+                    function preventDefaults(e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                    }
+                    
+                    // Ajouter/supprimer la classe pour l'effet visuel
+                    ['dragenter', 'dragover'].forEach(eventName => {
+                        dropZone.addEventListener(eventName, () => {
+                            dropZone.classList.add('drag-over');
+                        }, false);
+                    });
+                    
+                    ['dragleave', 'drop'].forEach(eventName => {
+                        dropZone.addEventListener(eventName, () => {
+                            dropZone.classList.remove('drag-over');
+                        }, false);
+                    });
+                    
+                    // Gérer le drop
+                    dropZone.addEventListener('drop', (e) => {
+                        const dt = e.dataTransfer;
+                        const files = dt.files;
+                        
+                        if (files.length > 0) {
+                            fileInput.files = files;
+                            handleFileSelect(fileInput, fileInfo, errorElement);
+                        }
+                    }, false);
+                    
+                    // Gérer la sélection de fichier via le bouton
+                    fileInput.addEventListener('change', () => {
+                        handleFileSelect(fileInput, fileInfo, errorElement);
+                    });
+                }
+                
+                // Fonction pour gérer la sélection de fichier
+                function handleFileSelect(fileInput, fileInfo, errorElement) {
+                    errorElement.textContent = '';
+                    
+                    if (fileInput.files.length > 0) {
+                        const file = fileInput.files[0];
+                        
+                        // Vérifier le format du fichier
+                        if (!file.name.toLowerCase().endsWith('.csv')) {
+                            errorElement.textContent = 'Format de fichier invalide. Seuls les fichiers CSV sont acceptés.';
+                            fileInfo.textContent = 'Aucun fichier sélectionné';
+                            fileInput.value = '';
+                            return;
+                        }
+                        
+                        // Vérifier la taille du fichier (10MB)
+                        const maxSize = 10 * 1024 * 1024;
+                        if (file.size > maxSize) {
+                            errorElement.textContent = 'Taille de fichier dépassée. La taille maximale est de 10MB.';
+                            fileInfo.textContent = 'Aucun fichier sélectionné';
+                            fileInput.value = '';
+                            return;
+                        }
+                        
+                        // Afficher le nom du fichier
+                        fileInfo.innerHTML = 'Fichier sélectionné: <span class="file-name">' + file.name + '</span> (' + formatFileSize(file.size) + ')';
+                    } else {
+                        fileInfo.textContent = 'Aucun fichier sélectionné';
+                    }
+                }
+                
+                // Formater la taille du fichier
+                function formatFileSize(bytes) {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+                }
+                
+                // Configurer le drag & drop pour chaque zone
+                setupDragAndDrop(employeeUpload, employeeFile, employeeFileInfo, employeeError);
+                setupDragAndDrop(salaryStructureUpload, salaryStructureFile, salaryStructureFileInfo, salaryStructureError);
+                setupDragAndDrop(salaryAssignmentUpload, salaryAssignmentFile, salaryAssignmentFileInfo, salaryAssignmentError);
+                
+                // Gérer la soumission du formulaire
+                uploadForm.addEventListener('submit', function(e) {
+                    e.preventDefault();
+                    
+                    // Vérifier que tous les fichiers sont sélectionnés
+                    if (!employeeFile.files.length || !salaryStructureFile.files.length || !salaryAssignmentFile.files.length) {
+                        uploadError.textContent = 'Veuillez sélectionner les trois fichiers requis.';
+                        uploadError.style.display = 'block';
+                        uploadStatus.style.display = 'none';
+                        return;
+                    }
+                    
+                    // Réinitialiser les messages
+                    uploadError.style.display = 'none';
+                    uploadStatus.style.display = 'none';
+                    uploadProgress.style.display = 'block';
+                    
+                    // Créer l'objet FormData
+                    const formData = new FormData();
+                    formData.append('employeeFile', employeeFile.files[0]);
+                    formData.append('salaryStructureFile', salaryStructureFile.files[0]);
+                    formData.append('salaryAssignmentFile', salaryAssignmentFile.files[0]);
+                    
+                    // Créer la requête AJAX
+                    const xhr = new XMLHttpRequest();
+                    
+                    // Gérer la progression
+                    xhr.upload.addEventListener('progress', function(e) {
+                        if (e.lengthComputable) {
+                            const percentComplete = (e.loaded / e.total) * 100;
+                            progressBar.style.width = percentComplete + '%';
+                            progressBar.setAttribute('aria-valuenow', percentComplete);
+                        }
+                    });
+                    
+                    // Gérer la fin du téléchargement
+                    xhr.addEventListener('load', function() {
+                        uploadProgress.style.display = 'none';
+                        
+                        if (xhr.status === 200) {
+                            const response = JSON.parse(xhr.responseText);
+                            if (response.success) {
+                                uploadStatus.textContent = response.message;
+                                uploadStatus.style.display = 'block';
+                                // Rediriger vers la page de validation après 2 secondes
+                                setTimeout(function() {
+                                    window.location.href = '/import/validate';
+                                }, 2000);
+                            } else {
+                                uploadError.textContent = response.message;
+                                uploadError.style.display = 'block';
+                            }
+                        } else {
+                            uploadError.textContent = 'Erreur lors du téléchargement des fichiers. Veuillez réessayer.';
+                            uploadError.style.display = 'block';
+                        }
+                    });
+                    
+                    // Gérer les erreurs
+                    xhr.addEventListener('error', function() {
+                        uploadProgress.style.display = 'none';
+                        uploadError.textContent = 'Erreur réseau lors du téléchargement des fichiers. Veuillez réessayer.';
+                        uploadError.style.display = 'block';
+                    });
+                    
+                    // Configurer et envoyer la requête
+                    xhr.open('POST', '/import/upload', true);
+                    xhr.send(formData);
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>
