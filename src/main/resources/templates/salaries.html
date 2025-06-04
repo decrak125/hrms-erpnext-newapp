@@ -127,9 +127,40 @@
                                         <a th:href="@{/employees/{id}(id=${salary.employeeId})}" class="btn btn-sm btn-info me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <a th:href="@{/salaries/pdf/{id}(id=${salary.id})}" class="btn btn-sm btn-secondary" target="_blank">
+                                        <!-- Dans la section des actions -->
+                                        <!-- Modifier le lien PDF -->
+                                        <a th:href="@{/salaries/pdf/{id}(id=${salary.id})}" class="btn btn-sm btn-secondary" 
+                                           th:data-salary-id="${salary.id}"
+                                           onclick="generatePdf(event, this.getAttribute('data-salary-id'))">
                                             <i class="bi bi-file-pdf"></i>
+                                            <span class="d-none" th:text="${salary.id}">ID</span>
                                         </a>
+                                        
+                                        <!-- Ajouter ce script à la fin du fichier -->
+                                        <script layout:fragment="javascript">
+                                            // Code existant pour réinitialiser les filtres
+                                            document.getElementById('reset-filters').addEventListener('click', function() {
+                                                document.getElementById('filter-form').reset();
+                                                document.getElementById('filter-form').submit();
+                                            });
+                                            
+                                            // Fonction pour gérer la génération de PDF avec gestion d'erreur
+                                            function generatePdf(event, salaryId) {
+                                                console.log('Exporting salary ID:', salaryId);
+                                                // Optionnel: Ajouter une gestion d'erreur côté client
+                                                // fetch('/salaries/pdf/' + salaryId)
+                                                //    .then(response => {
+                                                //        if (!response.ok) {
+                                                //            alert('Erreur lors de la génération du PDF');
+                                                //            event.preventDefault();
+                                                //        }
+                                                //    })
+                                                //    .catch(error => {
+                                                //        alert('Erreur: ' + error);
+                                                //        event.preventDefault();
+                                                //    });
+                                            }
+                                        </script>
                                     </td>
                                 </tr>
                                 <!-- Message si aucun salaire n'est trouvé -->
