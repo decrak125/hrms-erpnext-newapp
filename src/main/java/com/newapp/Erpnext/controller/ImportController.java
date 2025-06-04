@@ -1,10 +1,10 @@
 package com.newapp.Erpnext.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import com.newapp.Erpnext.services.ImportService;
+import jakarta.servlet.http.HttpSession;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.*;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
@@ -13,13 +13,9 @@ import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.multipart.MaxUploadSizeExceededException;
-
-import com.newapp.Erpnext.services.ImportService;
 import com.newapp.Erpnext.services.SessionService;
 import com.opencsv.exceptions.CsvValidationException;
 
-import java.io.IOException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -28,220 +24,305 @@ import java.util.Map;
 @RequestMapping("/import")
 public class ImportController {
 
-    private static final Logger logger = LoggerFactory.getLogger(ImportController.class);
-    private final ImportService importService;
-    private final SessionService sessionService;
-    private final RestTemplate restTemplate;
-    
-    @Value("${erpnext.url}")
-    private String erpnextUrl;
-    
-    @Value("${erpnext.api.key}")
-    private String apiKey;
-    
-    @Value("${erpnext.api.secret}")
-    private String apiSecret;
+    @Autowired
+    private ImportService importService;
 
     @Autowired
-    public ImportController(ImportService importService, SessionService sessionService, RestTemplate restTemplate) {
-        this.importService = importService;
-        this.sessionService = sessionService;
-        this.restTemplate = restTemplate;
-    }
+    private SessionService sessionService;
 
     @GetMapping
-    public String importPage(Model model) {
+    public String showImportPage(Model model, HttpSession session) {
         if (!sessionService.isAuthenticated()) {
             return "redirect:/login";
         }
         return "import";
     }
 
-    @PostMapping("/upload")
-    public String uploadFiles(
-            @RequestParam("employeeFile") MultipartFile employeeFile,
-            @RequestParam("salaryStructureFile") MultipartFile salaryStructureFile,
-            @RequestParam("salaryAssignmentFile") MultipartFile salaryAssignmentFile,
-            RedirectAttributes redirectAttributes) {
-
-        if (!sessionService.isAuthenticated()) {
-            return "redirect:/login";
-        }
-
-        Map<String, Object> response = new HashMap<>();
-        String employeeFilePath = null;
-        String salaryStructureFilePath = null;
-        String salaryAssignmentFilePath = null;
-
+    @PostMapping("/api/complete")
+    public String importCompleteData(
+            @RequestParam("employee_file") MultipartFile employeeFile,
+            @RequestParam("structure_file") MultipartFile structureFile,
+            @RequestParam("salary_file") MultipartFile salaryFile,
+            HttpSession session,
+            Model model) {
+        
         try {
-            logger.info("Début de l'upload des fichiers");
-
             // Validation des fichiers
-            if (!validateFiles(employeeFile, salaryStructureFile, salaryAssignmentFile, response)) {
-                redirectAttributes.addFlashAttribute("errors", response);
-                return "redirect:/import";
+            if (employeeFile.isEmpty() || structureFile.isEmpty() || salaryFile.isEmpty()) {
+                model.addAttribute("errors", Map.of(
+                    "message", List.of("Tous les fichiers sont requis")
+                ));
+                return "import";
             }
 
-            // Stockage des fichiers avec gestion des erreurs
-            try {
-                employeeFilePath = importService.storeFile(employeeFile, "employees");
-                salaryStructureFilePath = importService.storeFile(salaryStructureFile, "salary_structure");
-                salaryAssignmentFilePath = importService.storeFile(salaryAssignmentFile, "salary_assignment");
-            } catch (IOException e) {
-                logger.error("Erreur lors du stockage des fichiers", e);
-                response.put("success", false);
-                response.put("message", "Erreur lors du stockage des fichiers: " + e.getMessage());
-                redirectAttributes.addFlashAttribute("errors", response);
-                return "redirect:/import";
-            }
-            
-            logger.info("Fichiers stockés avec succès");
-            
-            // Validation détaillée
-            Map<String, Object> validationResults = performValidation(employeeFilePath, 
-                salaryStructureFilePath, salaryAssignmentFilePath);
-            
-            if (!validationResults.isEmpty()) {
-                logger.warn("Erreurs de validation détectées");
-                response.put("success", false);
-                response.put("validation_errors", validationResults);
-                redirectAttributes.addFlashAttribute("errors", validationResults);
-                cleanupFiles(employeeFilePath, salaryStructureFilePath, salaryAssignmentFilePath);
-                return "redirect:/import";
+            // Validation de la session
+            if (session.getAttribute("sid") == null) {
+                model.addAttribute("errors", Map.of(
+                    "message", List.of("Session invalide - Veuillez vous reconnecter")
+                ));
+                return "import";
             }
 
-            logger.info("Validation réussie, début de l'import vers ERPNext");
-
-            // Envoi à ERPNext
-            Map<String, Object> importResults = importService.importToErpnext(
-                employeeFilePath, salaryStructureFilePath, salaryAssignmentFilePath);
+            boolean result = importService.import_data(employeeFile, structureFile, salaryFile, session);
             
-            if (!(Boolean) importResults.get("success")) {
-                logger.error("Échec de l'import vers ERPNext");
-                response.put("success", false);
-                response.put("errors", importResults.get("errors"));
-                redirectAttributes.addFlashAttribute("errors", response);
-                cleanupFiles(employeeFilePath, salaryStructureFilePath, salaryAssignmentFilePath);
-                return "redirect:/import";
+            if (result) {
+                model.addAttribute("success", List.of(
+                    "Import réussi",
+                    "Les employés ont été importés avec succès",
+                    "Les structures salariales ont été importées avec succès",
+                    "Les attributions de salaires ont été importées avec succès"
+                ));
+            } else {
+                model.addAttribute("errors", Map.of(
+                    "message", List.of("Erreur lors de l'import - Veuillez vérifier vos fichiers et réessayer")
+                ));
             }
-
-            logger.info("Import terminé avec succès");
-            response.putAll(importResults);
-            redirectAttributes.addFlashAttribute("success", importResults.get("messages"));
             
-            // Nettoyage des fichiers temporaires
-            cleanupFiles(employeeFilePath, salaryStructureFilePath, salaryAssignmentFilePath);
-            
-            return "redirect:/import";
-
-        } catch (MaxUploadSizeExceededException e) {
-            logger.error("Taille maximale de fichier dépassée", e);
-            response.put("success", false);
-            response.put("message", "La taille des fichiers dépasse la limite autorisée (10MB par fichier)");
-            redirectAttributes.addFlashAttribute("errors", response);
-            return "redirect:/import";
         } catch (Exception e) {
-            logger.error("Erreur inattendue lors de l'upload", e);
-            response.put("success", false);
-            response.put("message", "Erreur lors du téléchargement des fichiers: " + e.getMessage());
-            redirectAttributes.addFlashAttribute("errors", response);
-            cleanupFiles(employeeFilePath, salaryStructureFilePath, salaryAssignmentFilePath);
-            return "redirect:/import";
+            model.addAttribute("errors", Map.of(
+                "message", List.of("Erreur: " + e.getMessage())
+            ));
         }
+        
+        return "import";
     }
 
-    private void cleanupFiles(String... filePaths) {
-        for (String filePath : filePaths) {
-            if (filePath != null) {
-                try {
-                    importService.deleteFile(filePath);
-                } catch (Exception e) {
-                    logger.warn("Erreur lors du nettoyage du fichier: " + filePath, e);
-                }
+    /**
+     * Import des employés seulement
+     */
+    @PostMapping("/employees")
+    public ResponseEntity<Map<String, Object>> importEmployees(
+            @RequestParam("employee_file") MultipartFile employeeFile,
+            HttpSession session) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            if (employeeFile.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Fichier employé requis");
+                return ResponseEntity.badRequest().body(response);
             }
-        }
-    }
 
-    private boolean validateFiles(MultipartFile employeeFile, 
-            MultipartFile salaryStructureFile, 
-            MultipartFile salaryAssignmentFile, 
-            Map<String, Object> response) {
-        
-        if (!validateFileFormat(employeeFile) || 
-            !validateFileFormat(salaryStructureFile) || 
-            !validateFileFormat(salaryAssignmentFile)) {
+            if (session.getAttribute("sid") == null) {
+                response.put("success", false);
+                response.put("message", "Session invalide");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            boolean result = importService.import_employees(employeeFile, session);
+            
+            if (result) {
+                response.put("success", true);
+                response.put("message", "Import des employés réussi");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "Erreur lors de l'import des employés");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+            
+        } catch (Exception e) {
             response.put("success", false);
-            response.put("message", "Format de fichier invalide. Seuls les fichiers CSV sont acceptés.");
-            return false;
+            response.put("message", "Erreur: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
+    }
 
-        if (!validateFileSize(employeeFile) || 
-            !validateFileSize(salaryStructureFile) || 
-            !validateFileSize(salaryAssignmentFile)) {
+    /**
+     * Import des structures de salaire seulement
+     */
+    @PostMapping("/salary-structures")
+    public ResponseEntity<Map<String, Object>> importSalaryStructures(
+            @RequestParam("structure_file") MultipartFile structureFile,
+            HttpSession session) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            if (structureFile.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Fichier structure requis");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (session.getAttribute("sid") == null) {
+                response.put("success", false);
+                response.put("message", "Session invalide");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            boolean result = importService.import_salary_structures(structureFile, session);
+            
+            if (result) {
+                response.put("success", true);
+                response.put("message", "Import des structures de salaire réussi");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "Erreur lors de l'import des structures");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+            
+        } catch (Exception e) {
             response.put("success", false);
-            response.put("message", "Taille de fichier dépassée. La taille maximale est de 10MB.");
-            return false;
+            response.put("message", "Erreur: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-
-        return true;
     }
 
-    private Map<String, Object> performValidation(String employeeFilePath, 
-            String salaryStructureFilePath, 
-            String salaryAssignmentFilePath) throws CsvValidationException {
+    /**
+     * Import des affectations de salaire seulement
+     */
+    @PostMapping("/salary-assignments")
+    public ResponseEntity<Map<String, Object>> importSalaryAssignments(
+            @RequestParam("salary_file") MultipartFile salaryFile,
+            HttpSession session) {
         
-        Map<String, Object> validationResults = new HashMap<>();
+        Map<String, Object> response = new HashMap<>();
         
-        // Validation du fichier employé
-        Map<String, List<String>> employeeValidation = importService.validateEmployeeFile(employeeFilePath);
-        if (!employeeValidation.get("errors").isEmpty()) {
-            validationResults.put("employee_errors", employeeValidation.get("errors"));
+        try {
+            if (salaryFile.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Fichier affectation requis");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (session.getAttribute("sid") == null) {
+                response.put("success", false);
+                response.put("message", "Session invalide");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            boolean result = importService.import_salary_assignments(salaryFile, session);
+            
+            if (result) {
+                response.put("success", true);
+                response.put("message", "Import des affectations de salaire réussi");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "Erreur lors de l'import des affectations");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Erreur: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
         }
-        if (!employeeValidation.get("warnings").isEmpty()) {
-            validationResults.put("employee_warnings", employeeValidation.get("warnings"));
-        }
-        
-        // Validation de la structure salariale
-        Map<String, List<String>> structureValidation = importService.validateSalaryStructureFile(salaryStructureFilePath);
-        if (!structureValidation.get("errors").isEmpty()) {
-            validationResults.put("structure_errors", structureValidation.get("errors"));
-        }
-        if (!structureValidation.get("warnings").isEmpty()) {
-            validationResults.put("structure_warnings", structureValidation.get("warnings"));
-        }
-        
-        // Validation des attributions de salaire
-        Map<String, List<String>> assignmentValidation = importService.validateSalaryAssignmentFile(salaryAssignmentFilePath);
-        if (!assignmentValidation.get("errors").isEmpty()) {
-            validationResults.put("assignment_errors", assignmentValidation.get("errors"));
-        }
-        if (!assignmentValidation.get("warnings").isEmpty()) {
-            validationResults.put("assignment_warnings", assignmentValidation.get("warnings"));
-        }
-        
-        // Vérification des données de référence
-        Map<String, Object> referenceValidation = importService.validateReferenceData(employeeFilePath, 
-            salaryStructureFilePath, salaryAssignmentFilePath);
-        if (referenceValidation.containsKey("errors")) {
-            validationResults.put("reference_errors", referenceValidation.get("errors"));
-        }
-        if (referenceValidation.containsKey("warnings")) {
-            validationResults.put("reference_warnings", referenceValidation.get("warnings"));
-        }
-        
-        return validationResults;
     }
 
-    private boolean validateFileFormat(MultipartFile file) {
-        if (file.isEmpty()) {
-            return false;
-        }
-        String filename = file.getOriginalFilename();
-        return filename != null && filename.toLowerCase().endsWith(".csv");
+    /**
+     * Endpoint pour vérifier le statut du service
+     */
+    @GetMapping("/status")
+    public ResponseEntity<Map<String, Object>> getStatus() {
+        Map<String, Object> response = new HashMap<>();
+        response.put("status", "active");
+        response.put("service", "Import Service");
+        response.put("timestamp", System.currentTimeMillis());
+        return ResponseEntity.ok(response);
     }
 
-    private boolean validateFileSize(MultipartFile file) {
-        long maxSize = 10 * 1024 * 1024; // 10MB en octets
-        return file.getSize() <= maxSize;
+    /**
+     * Endpoint pour obtenir les formats de fichiers attendus
+     */
+    @GetMapping("/formats")
+    public ResponseEntity<Map<String, Object>> getFileFormats() {
+        Map<String, Object> response = new HashMap<>();
+        
+        Map<String, String> employeeFormat = new HashMap<>();
+        employeeFormat.put("description", "Format CSV pour les employés");
+        employeeFormat.put("headers", "ref,firstName,lastName,middleName,gender,hireDate,company,department,position,email,phone,address,status,contractType");
+        employeeFormat.put("dateFormat", "dd/MM/yyyy");
+        
+        Map<String, String> structureFormat = new HashMap<>();
+        structureFormat.put("description", "Format CSV pour les structures de salaire");
+        structureFormat.put("headers", "structureName,salary_component,salary_component_abbr,type,formula,company");
+        
+        Map<String, String> assignmentFormat = new HashMap<>();
+        assignmentFormat.put("description", "Format CSV pour les affectations de salaire");
+        assignmentFormat.put("headers", "from_date,employee_ref,base,salary_structure");
+        assignmentFormat.put("dateFormat", "dd/MM/yyyy");
+        
+        response.put("employee_format", employeeFormat);
+        response.put("structure_format", structureFormat);
+        response.put("assignment_format", assignmentFormat);
+        
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Endpoint pour import avec validation préalable
+     */
+    @PostMapping("/validate-and-import")
+    public ResponseEntity<Map<String, Object>> validateAndImport(
+            @RequestParam("employee_file") MultipartFile employeeFile,
+            @RequestParam("structure_file") MultipartFile structureFile,
+            @RequestParam("salary_file") MultipartFile salaryFile,
+            @RequestParam(value = "validate_only", defaultValue = "false") boolean validateOnly,
+            HttpSession session) {
+        
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Validation de base
+            if (employeeFile.isEmpty() || structureFile.isEmpty() || salaryFile.isEmpty()) {
+                response.put("success", false);
+                response.put("message", "Tous les fichiers sont requis");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            // Validation des types de fichiers
+            if (!isValidCSVFile(employeeFile) || !isValidCSVFile(structureFile) || !isValidCSVFile(salaryFile)) {
+                response.put("success", false);
+                response.put("message", "Seuls les fichiers CSV sont acceptés");
+                return ResponseEntity.badRequest().body(response);
+            }
+
+            if (session.getAttribute("sid") == null) {
+                response.put("success", false);
+                response.put("message", "Session invalide");
+                return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(response);
+            }
+
+            // Si seulement validation
+            if (validateOnly) {
+                response.put("success", true);
+                response.put("message", "Validation réussie - fichiers prêts pour l'import");
+                response.put("validation_only", true);
+                return ResponseEntity.ok(response);
+            }
+
+            // Procéder à l'import
+            boolean result = importService.import_data(employeeFile, structureFile, salaryFile, session);
+            
+            if (result) {
+                response.put("success", true);
+                response.put("message", "Validation et import réussis");
+                return ResponseEntity.ok(response);
+            } else {
+                response.put("success", false);
+                response.put("message", "Validation réussie mais erreur lors de l'import");
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+            }
+            
+        } catch (Exception e) {
+            response.put("success", false);
+            response.put("message", "Erreur: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
+        }
+    }
+
+    /**
+     * Méthode utilitaire pour valider le type de fichier CSV
+     */
+    private boolean isValidCSVFile(MultipartFile file) {
+        String contentType = file.getContentType();
+        String fileName = file.getOriginalFilename();
+        
+        return (contentType != null && (contentType.equals("text/csv") || contentType.equals("application/csv"))) ||
+               (fileName != null && fileName.toLowerCase().endsWith(".csv"));
     }
 }
