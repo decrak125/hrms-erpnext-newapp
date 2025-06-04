@@ -7,19 +7,13 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
-<<<<<<< Updated upstream
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
-=======
-import org.springframework.web.bind.annotation.*;
->>>>>>> Stashed changes
 import org.springframework.web.multipart.MultipartFile;
 import com.newapp.Erpnext.services.SessionService;
 import com.opencsv.exceptions.CsvValidationException;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -36,9 +30,19 @@ public class ImportController {
 
     @GetMapping
     public String showImportPage(Model model, HttpSession session) {
+        System.out.println("Session ID: " + session.getId());
+        System.out.println("Is Authenticated: " + sessionService.isAuthenticated());
+        
         if (!sessionService.isAuthenticated()) {
+            System.out.println("User not authenticated, redirecting to login");
             return "redirect:/login";
         }
+
+        // Afficher les attributs du modèle pour le débogage
+        System.out.println("Messages de succès dans le modèle: " + model.getAttribute("success"));
+        System.out.println("Messages d'erreur dans le modèle: " + model.getAttribute("errors"));
+        
+        System.out.println("User authenticated, showing import page");
         return "import";
     }
 
@@ -50,51 +54,34 @@ public class ImportController {
             HttpSession session,
             Model model) {
         
-<<<<<<< Updated upstream
         try {
+            // Vérification de la session
+            if (!sessionService.isAuthenticated()) {
+                model.addAttribute("errors", Map.of(
+                    "message", List.of("Session invalide - Veuillez vous reconnecter")
+                ));
+                return "redirect:/login";
+            }
+
             // Validation des fichiers
             if (employeeFile.isEmpty() || structureFile.isEmpty() || salaryFile.isEmpty()) {
                 model.addAttribute("errors", Map.of(
                     "message", List.of("Tous les fichiers sont requis")
                 ));
-=======
-        Map<String, Object> response = new HashMap<>();
-        
-        try {
-            // Validation des fichiers
-            if (employeeFile.isEmpty() || structureFile.isEmpty() || salaryFile.isEmpty()) {
-                Map<String, List<String>> errors = new HashMap<>();
-                errors.put("message", List.of("Tous les fichiers sont requis"));
-                model.addAttribute("errors", errors);
->>>>>>> Stashed changes
-                return "import";
-            }
-
-            // Validation de la session
-            if (session.getAttribute("sid") == null) {
-<<<<<<< Updated upstream
-                model.addAttribute("errors", Map.of(
-                    "message", List.of("Session invalide - Veuillez vous reconnecter")
-                ));
-=======
-                Map<String, List<String>> errors = new HashMap<>();
-                errors.put("message", List.of("Session invalide"));
-                model.addAttribute("errors", errors);
->>>>>>> Stashed changes
                 return "import";
             }
 
             boolean result = importService.import_data(employeeFile, structureFile, salaryFile, session);
             
             if (result) {
-                model.addAttribute("success", List.of(
-                    "Import réussi",
-                    "Les employés ont été importés avec succès",
-                    "Les structures salariales ont été importées avec succès",
-                    "Les attributions de salaires ont été importées avec succès"
-                ));
+                List<String> successMessages = new ArrayList<>();
+                successMessages.add("Import réussi");
+                successMessages.add("Les employés ont été importés avec succès");
+                successMessages.add("Les structures salariales ont été importées avec succès");
+                successMessages.add("Les attributions de salaires ont été importées avec succès");
+                model.addAttribute("success", successMessages);
+                System.out.println("Messages de succès ajoutés: " + successMessages);
             } else {
-<<<<<<< Updated upstream
                 model.addAttribute("errors", Map.of(
                     "message", List.of("Erreur lors de l'import - Veuillez vérifier vos fichiers et réessayer")
                 ));
@@ -104,22 +91,17 @@ public class ImportController {
             model.addAttribute("errors", Map.of(
                 "message", List.of("Erreur: " + e.getMessage())
             ));
-=======
-                Map<String, List<String>> errors = new HashMap<>();
-                errors.put("message", List.of("Erreur lors de l'import"));
-                model.addAttribute("errors", errors);
-            }
-            
-        } catch (Exception e) {
-            Map<String, List<String>> errors = new HashMap<>();
-            errors.put("message", List.of("Erreur: " + e.getMessage()));
-            model.addAttribute("errors", errors);
->>>>>>> Stashed changes
+            System.out.println("Erreur lors de l'import: " + e.getMessage());
         }
         
+        // Ajout de logs pour le débogage
+        System.out.println("Import terminé, affichage de la page d'import");
+        System.out.println("Messages de succès: " + model.getAttribute("success"));
+        System.out.println("Messages d'erreur: " + model.getAttribute("errors"));
+        
+        // On retourne directement la vue import
         return "import";
     }
-
     /**
      * Import des employés seulement
      */

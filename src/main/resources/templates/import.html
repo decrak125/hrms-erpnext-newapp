@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{/layout/main}">
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
 <head>
     <title>Import HRMS - ERPNext Spring</title>
 </head>
@@ -13,7 +13,10 @@
                         <div class="card-body">
                             <h5 class="card-title"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs</h5>
                             <ul class="list-unstyled mb-0">
-                                <li th:each="error : ${errors.message}">
+                                <li th:if="${errors instanceof T(java.util.Map)}" th:each="error : ${errors.message}">
+                                    <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
+                                </li>
+                                <li th:if="${errors instanceof T(java.util.List)}" th:each="error : ${errors}">
                                     <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
                                 </li>
                             </ul>
@@ -104,7 +107,10 @@
                                 <div th:if="${errors != null}" class="alert alert-danger">
                                     <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs</h5>
                                     <ul class="list-unstyled mb-0">
-                                        <li th:each="error : ${errors.message}">
+                                        <li th:if="${errors instanceof T(java.util.Map)}" th:each="error : ${errors.message}">
+                                            <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
+                                        </li>
+                                        <li th:if="${errors instanceof T(java.util.List)}" th:each="error : ${errors}">
                                             <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
                                         </li>
                                     </ul>
@@ -119,31 +125,7 @@
                                         </li>
                                     </ul>
                                 </div>
-                            <script th:inline="javascript">
-                                document.getElementById('uploadForm').addEventListener('submit', function(e) {
-                                    const submitBtn = document.getElementById('submitBtn');
-                                    submitBtn.disabled = true;
-                                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Import en cours...';
-                                });
-
-                                // Validation des fichiers
-                                document.querySelectorAll('input[type="file"]').forEach(function(input) {
-                                    input.addEventListener('change', function() {
-                                        if (this.files[0]) {
-                                            const file = this.files[0];
-                                            if (!file.name.toLowerCase().endsWith('.csv')) {
-                                                this.value = '';
-                                                this.classList.add('is-invalid');
-                                            } else if (file.size > 10 * 1024 * 1024) { // 10MB
-                                                this.value = '';
-                                                this.classList.add('is-invalid');
-                                            } else {
-                                                this.classList.remove('is-invalid');
-                                            }
-                                        }
-                                    });
-                                });
-                            </script>
+                            </div>
                         </div>
                     </div>
 
@@ -233,6 +215,33 @@
             </div>
         </div>
     </div>
+
+    <th:block layout:fragment="javascript">
+        <script th:inline="javascript">
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Import en cours...';
+            });
+
+            // Validation des fichiers
+            document.querySelectorAll('input[type="file"]').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    if (this.files[0]) {
+                        const file = this.files[0];
+                        if (!file.name.toLowerCase().endsWith('.csv')) {
+                            this.value = '';
+                            this.classList.add('is-invalid');
+                        } else if (file.size > 10 * 1024 * 1024) { // 10MB
+                            this.value = '';
+                            this.classList.add('is-invalid');
+                        } else {
+                            this.classList.remove('is-invalid');
+                        }
+                    }
+                });
+            });
+        </script>
+    </th:block>
 </body>
-</html>
 </html>
