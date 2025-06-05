@@ -9,29 +9,19 @@
             <div class="row">
                 <div class="col-12">
                     <!-- Messages de résultat -->
-                    <div th:if="${errors != null}" class="card bg-danger text-white mb-4">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs</h5>
-                            <ul class="list-unstyled mb-0">
-                                <li th:if="${errors instanceof T(java.util.Map)}" th:each="error : ${errors.message}">
-                                    <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
-                                </li>
-                                <li th:if="${errors instanceof T(java.util.List)}" th:each="error : ${errors}">
-                                    <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
-                                </li>
-                            </ul>
-                        </div>
+                    <div th:if="${errors != null}">
+                        <h3 class="error">Erreurs:</h3>
+                        <ul>
+                            <li th:each="error : ${errors.message}" th:text="${error}"></li>
+                        </ul>
                     </div>
-
-                    <div th:if="${success != null}" class="card bg-success text-white mb-4">
-                        <div class="card-body">
-                            <h5 class="card-title"><i class="bi bi-check-circle me-2"></i>Succès</h5>
-                            <ul class="list-unstyled mb-0">
-                                <li th:each="message : ${success}">
-                                    <i class="bi bi-check me-2"></i><span th:text="${message}"></span>
-                                </li>
-                            </ul>
-                        </div>
+                
+                    <!-- Affichage des messages de succès -->
+                    <div th:if="${success != null}">
+                        <h3 class="success">Succès:</h3>
+                        <ul>
+                            <li th:each="msg : ${success}" th:text="${msg}"></li>
+                        </ul>
                     </div>
 
                     <div class="card bg-dark text-white mb-4">
@@ -100,6 +90,11 @@
                                     </button>
                                 </div>
                             </form>
+
+                            <div>
+                                <a th:href="@{/import/formats}">Voir les formats de fichiers</a>
+                                <a th:href="@{/import/status}">Vérifier le statut du service</a>
+                            </div>
 
                             <!-- Messages de résultat -->
                             <div class="mt-4">

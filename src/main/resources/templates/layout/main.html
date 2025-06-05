@@ -12,6 +12,8 @@
             --dark-secondary: #2d2d2d;
             --dark-text: #ffffff;
             --dark-accent: #4a90e2;
+            --dark-border: #404040;
+            --dark-hover: #3d3d3d;
         }
         body {
             background-color: var(--dark-primary);
@@ -26,6 +28,7 @@
             left: 0;
             width: 250px;
             padding-top: 1rem;
+            border-right: 1px solid var(--dark-border);
         }
         .main-content {
             margin-left: 250px;
@@ -33,12 +36,14 @@
         }
         .navbar {
             background-color: var(--dark-secondary);
+            border-bottom: 1px solid var(--dark-border);
         }
         .nav-link {
             color: var(--dark-text);
             padding: 0.5rem 1rem;
             margin: 0.2rem 0;
             border-radius: 5px;
+            transition: all 0.3s ease;
         }
         .nav-link:hover, .nav-link.active {
             background-color: var(--dark-accent);
@@ -46,18 +51,65 @@
         }
         .card {
             background-color: var(--dark-secondary);
-            border: none;
+            border: 1px solid var(--dark-border);
             margin-bottom: 1rem;
+        }
+        .card-body {
+            padding: 1.5rem;
         }
         .dropdown-menu {
             background-color: var(--dark-secondary);
+            border: 1px solid var(--dark-border);
         }
         .dropdown-item {
             color: var(--dark-text);
         }
         .dropdown-item:hover {
-            background-color: var(--dark-accent);
+            background-color: var(--dark-hover);
             color: var(--dark-text);
+        }
+        .form-control {
+            background-color: var(--dark-primary);
+            border: 1px solid var(--dark-border);
+            color: var(--dark-text);
+        }
+        .form-control:focus {
+            background-color: var(--dark-primary);
+            border-color: var(--dark-accent);
+            color: var(--dark-text);
+            box-shadow: 0 0 0 0.25rem rgba(74, 144, 226, 0.25);
+        }
+        .btn-primary {
+            background-color: var(--dark-accent);
+            border-color: var(--dark-accent);
+        }
+        .btn-primary:hover {
+            background-color: #357abd;
+            border-color: #357abd;
+        }
+        .alert {
+            background-color: var(--dark-secondary);
+            border: 1px solid var(--dark-border);
+        }
+        .alert-danger {
+            background-color: rgba(220, 53, 69, 0.2);
+            border-color: #dc3545;
+            color: #ff6b6b;
+        }
+        .alert-success {
+            background-color: rgba(40, 167, 69, 0.2);
+            border-color: #28a745;
+            color: #75b798;
+        }
+        .alert-warning {
+            background-color: rgba(255, 193, 7, 0.2);
+            border-color: #ffc107;
+            color: #ffda6a;
+        }
+        .alert-info {
+            background-color: rgba(23, 162, 184, 0.2);
+            border-color: #17a2b8;
+            color: #6edff6;
         }
     </style>
 </head>
