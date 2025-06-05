@@ -94,6 +94,9 @@
                             <div>
                                 <a th:href="@{/import/formats}">Voir les formats de fichiers</a>
                                 <a th:href="@{/import/status}">Vérifier le statut du service</a>
+                                <button type="button" class="btn btn-danger ms-3" id="resetBtn">
+                                    <i class="bi bi-trash me-2"></i>Réinitialiser les données RH
+                                </button>
                             </div>
 
                             <!-- Messages de résultat -->
@@ -235,6 +238,38 @@
                         }
                     }
                 });
+            });
+
+            // Gestion de la réinitialisation RH
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                if (confirm('Êtes-vous sûr de vouloir réinitialiser toutes les données RH ? Cette action est irréversible.')) {
+                    const btn = this;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Réinitialisation en cours...';
+
+                    fetch('/import/api/reset', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.message) {
+                            alert('Réinitialisation réussie : ' + data.message);
+                            location.reload();
+                        } else {
+                            throw new Error('Réponse invalide du serveur');
+                        }
+                    })
+                    .catch(error => {
+                        alert('Erreur lors de la réinitialisation : ' + error.message);
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-trash me-2"></i>Réinitialiser les données RH';
+                    });
+                }
             });
         </script>
     </th:block>

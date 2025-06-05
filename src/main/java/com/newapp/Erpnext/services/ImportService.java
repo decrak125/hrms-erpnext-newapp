@@ -314,6 +314,66 @@ public class ImportService {
         importCache.clear();
     }
 
+    public boolean reset_rh(HttpSession session) throws ImportException {
+        validateSession(session);
+
+        try {
+            // Préparation de la requête
+            String url = baseUrl + "/method/erpnext.importation.rh_import.reset_rh";
+            
+            // Configuration des headers
+            HttpHeaders headers = createHeaders(session);
+            HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(new LinkedMultiValueMap<>(), headers);
+
+            // Appel API
+            ResponseEntity<String> response = restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                request,
+                String.class
+            );
+
+            if (!response.getStatusCode().is2xxSuccessful()) {
+                logger.error("Reset RH failed with status: {}", response.getStatusCode());
+                throw new ImportException("La réinitialisation a échoué avec le code : " + response.getStatusCode());
+            }
+
+            String responseBody = response.getBody();
+            if (responseBody == null) {
+                logger.error("Empty response from ERPNext");
+                throw new ImportException("Réponse vide de ERPNext");
+            }
+
+            // Parse la réponse JSON
+            Map<String, Object> jsonResponse = objectMapper.readValue(responseBody, Map.class);
+            
+            // Vérifie si la réponse contient une erreur
+            if (jsonResponse.containsKey("exc_type") || jsonResponse.containsKey("exception") || 
+                jsonResponse.containsKey("_error_message") || jsonResponse.containsKey("error")) {
+                String errorMessage = jsonResponse.containsKey("exception") ? 
+                    (String) jsonResponse.get("exception") : 
+                    jsonResponse.containsKey("_error_message") ? 
+                        (String) jsonResponse.get("_error_message") : 
+                        "Erreur inconnue lors de la réinitialisation";
+                logger.error("ERPNext error: {}", errorMessage);
+                throw new ImportException("Erreur ERPNext : " + errorMessage);
+            }
+
+            // Vérifie si la réinitialisation a réussi
+            if (jsonResponse.containsKey("message") && (jsonResponse.get("message").equals(true) || jsonResponse.get("message").equals("True"))) {
+                logger.info("Reset RH successful");
+                return true;
+            } else {
+                logger.error("Unexpected response from ERPNext: {}", responseBody);
+                throw new ImportException("Réponse inattendue de ERPNext: " + responseBody);
+            }
+
+        } catch (Exception e) {
+            logger.error("Reset RH failed", e);
+            throw new ImportException("Erreur lors de la réinitialisation: " + e.getMessage(), e);
+        }
+    }
+
     public static class ImportException extends RuntimeException {
         public ImportException(String message) {
             super(message);

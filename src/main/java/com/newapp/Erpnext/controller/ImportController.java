@@ -6,16 +6,16 @@ import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseBody;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
 import java.util.*;
 
 @Controller
@@ -131,6 +131,51 @@ public class ImportController {
         return "import";
     }
 
+    // New endpoint for resetting HR data
+    @PostMapping("/api/reset")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> handleReset(HttpSession session) {
+        logger.info("Début de la procédure de réinitialisation RH");
+        Map<String, Object> response = new HashMap<>();
+
+        try {
+            // Verify session
+            if (!sessionService.isAuthenticated()) {
+                logger.error("L'utilisateur n'est pas authentifié");
+                response.put("message", "Veuillez vous connecter pour réinitialiser les données RH.");
+                return ResponseEntity.status(401).body(response);
+            }
+
+            // Get or create import session
+            String sid = sessionService.getOrCreateImportSid(session);
+            if (sid == null) {
+                logger.error("Impossible de créer ou récupérer une session ERPNext");
+                response.put("message", "Erreur de connexion avec ERPNext. Veuillez réessayer.");
+                return ResponseEntity.status(500).body(response);
+            }
+
+            // Call reset_rh via ImportService
+            boolean success = importService.reset_rh(session);
+            if (success) {
+                logger.info("Réinitialisation RH réussie");
+                response.put("message", "Données RH réinitialisées avec succès.");
+                return ResponseEntity.ok(response);
+            } else {
+                logger.error("Échec de la réinitialisation RH");
+                response.put("message", "Échec de la réinitialisation des données RH.");
+                return ResponseEntity.status(500).body(response);
+            }
+        } catch (ImportException e) {
+            logger.error("Erreur lors de la réinitialisation RH", e);
+            response.put("message", "Erreur lors de la réinitialisation : " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        } catch (Exception e) {
+            logger.error("Erreur inattendue lors de la réinitialisation RH", e);
+            response.put("message", "Une erreur inattendue s'est produite : " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        }
+    }
+
     private boolean validateFiles(
             MultipartFile employeeFile,
             MultipartFile structureFile,
@@ -213,7 +258,6 @@ public class ImportController {
                (fileName != null && fileName.toLowerCase().endsWith(".csv"));
     }
 
-    // Classe interne pour la gestion des erreurs
     public static class ImportErrors {
         private java.util.List<String> message = new java.util.ArrayList<>();
         private java.util.List<String> employee_errors = new java.util.ArrayList<>();
