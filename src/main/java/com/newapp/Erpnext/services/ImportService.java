@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.newapp.Erpnext.models.EmployeeImport;
 import com.newapp.Erpnext.models.SalaryStructure;
 import com.newapp.Erpnext.models.SalaryStructureAssignment;
+import com.newapp.Erpnext.models.SalaryComponent;
 import jakarta.servlet.http.HttpSession;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
