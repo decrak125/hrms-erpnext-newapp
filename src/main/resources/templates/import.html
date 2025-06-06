@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{/layout/main}">
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
 <head>
     <title>Import HRMS - ERPNext Spring</title>
 </head>
@@ -8,6 +8,22 @@
         <div class="container-fluid">
             <div class="row">
                 <div class="col-12">
+                    <!-- Messages de résultat -->
+                    <div th:if="${errors != null}">
+                        <h3 class="error">Erreurs:</h3>
+                        <ul>
+                            <li th:each="error : ${errors.message}" th:text="${error}"></li>
+                        </ul>
+                    </div>
+                
+                    <!-- Affichage des messages de succès -->
+                    <div th:if="${success != null}">
+                        <h3 class="success">Succès:</h3>
+                        <ul>
+                            <li th:each="msg : ${success}" th:text="${msg}"></li>
+                        </ul>
+                    </div>
+
                     <div class="card bg-dark text-white mb-4">
                         <div class="card-body">
                             <h4 class="card-title mb-4">Import HRMS vers ERPNext</h4>
@@ -23,7 +39,7 @@
                                 <p class="mb-0"><small>Taille maximale: 10MB par fichier. Format accepté: CSV uniquement.</small></p>
                             </div>
 
-                            <form action="/import/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+                            <form action="/import/api/complete" method="post" enctype="multipart/form-data" id="uploadForm">
                                 <div class="row g-3">
                                     <div class="col-md-4">
                                         <div class="card bg-dark text-white border">
@@ -31,7 +47,7 @@
                                                 <h5 class="card-title">
                                                     <i class="bi bi-people me-2"></i>Fichier Employés
                                                 </h5>
-                                                <input type="file" class="form-control bg-dark text-white" id="employeeFile" name="employeeFile" accept=".csv" required>
+                                                <input type="file" class="form-control bg-dark text-white" id="employeeFile" name="employee_file" accept=".csv" required>
                                                 <div class="invalid-feedback">
                                                     Veuillez sélectionner un fichier CSV valide.
                                                 </div>
@@ -45,7 +61,7 @@
                                                 <h5 class="card-title">
                                                     <i class="bi bi-diagram-3 me-2"></i>Structure Salariale
                                                 </h5>
-                                                <input type="file" class="form-control bg-dark text-white" id="salaryStructureFile" name="salaryStructureFile" accept=".csv" required>
+                                                <input type="file" class="form-control bg-dark text-white" id="salaryStructureFile" name="structure_file" accept=".csv" required>
                                                 <div class="invalid-feedback">
                                                     Veuillez sélectionner un fichier CSV valide.
                                                 </div>
@@ -59,7 +75,7 @@
                                                 <h5 class="card-title">
                                                     <i class="bi bi-cash-stack me-2"></i>Attribution Salaires
                                                 </h5>
-                                                <input type="file" class="form-control bg-dark text-white" id="salaryAssignmentFile" name="salaryAssignmentFile" accept=".csv" required>
+                                                <input type="file" class="form-control bg-dark text-white" id="salaryAssignmentFile" name="salary_file" accept=".csv" required>
                                                 <div class="invalid-feedback">
                                                     Veuillez sélectionner un fichier CSV valide.
                                                 </div>
@@ -75,31 +91,39 @@
                                 </div>
                             </form>
 
-                            <script th:inline="javascript">
-                                document.getElementById('uploadForm').addEventListener('submit', function(e) {
-                                    const submitBtn = document.getElementById('submitBtn');
-                                    submitBtn.disabled = true;
-                                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Import en cours...';
-                                });
+                            <div>
+                                <a th:href="@{/import/formats}">Voir les formats de fichiers</a>
+                                <a th:href="@{/import/status}">Vérifier le statut du service</a>
+                                <button type="button" class="btn btn-danger ms-3" id="resetBtn">
+                                    <i class="bi bi-trash me-2"></i>Réinitialiser les données RH
+                                </button>
+                            </div>
 
-                                // Validation des fichiers
-                                document.querySelectorAll('input[type="file"]').forEach(function(input) {
-                                    input.addEventListener('change', function() {
-                                        if (this.files[0]) {
-                                            const file = this.files[0];
-                                            if (!file.name.toLowerCase().endsWith('.csv')) {
-                                                this.value = '';
-                                                this.classList.add('is-invalid');
-                                            } else if (file.size > 10 * 1024 * 1024) { // 10MB
-                                                this.value = '';
-                                                this.classList.add('is-invalid');
-                                            } else {
-                                                this.classList.remove('is-invalid');
-                                            }
-                                        }
-                                    });
-                                });
-                            </script>
+                            <!-- Messages de résultat -->
+                            <div class="mt-4">
+                                <!-- Messages d'erreur -->
+                                <div th:if="${errors != null}" class="alert alert-danger">
+                                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs</h5>
+                                    <ul class="list-unstyled mb-0">
+                                        <li th:if="${errors instanceof T(java.util.Map)}" th:each="error : ${errors.message}">
+                                            <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
+                                        </li>
+                                        <li th:if="${errors instanceof T(java.util.List)}" th:each="error : ${errors}">
+                                            <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <!-- Messages de succès -->
+                                <div th:if="${success != null}" class="alert alert-success">
+                                    <h5 class="alert-heading"><i class="bi bi-check-circle me-2"></i>Succès</h5>
+                                    <ul class="list-unstyled mb-0">
+                                        <li th:each="message : ${success}">
+                                            <i class="bi bi-check me-2"></i><span th:text="${message}"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -189,5 +213,65 @@
             </div>
         </div>
     </div>
+
+    <th:block layout:fragment="javascript">
+        <script th:inline="javascript">
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Import en cours...';
+            });
+
+            // Validation des fichiers
+            document.querySelectorAll('input[type="file"]').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    if (this.files[0]) {
+                        const file = this.files[0];
+                        if (!file.name.toLowerCase().endsWith('.csv')) {
+                            this.value = '';
+                            this.classList.add('is-invalid');
+                        } else if (file.size > 10 * 1024 * 1024) { // 10MB
+                            this.value = '';
+                            this.classList.add('is-invalid');
+                        } else {
+                            this.classList.remove('is-invalid');
+                        }
+                    }
+                });
+            });
+
+            // Gestion de la réinitialisation RH
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                if (confirm('Êtes-vous sûr de vouloir réinitialiser toutes les données RH ? Cette action est irréversible.')) {
+                    const btn = this;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Réinitialisation en cours...';
+
+                    fetch('/import/api/reset', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.message) {
+                            alert('Réinitialisation réussie : ' + data.message);
+                            location.reload();
+                        } else {
+                            throw new Error('Réponse invalide du serveur');
+                        }
+                    })
+                    .catch(error => {
+                        alert('Erreur lors de la réinitialisation : ' + error.message);
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-trash me-2"></i>Réinitialiser les données RH';
+                    });
+                }
+            });
+        </script>
+    </th:block>
 </body>
 </html>

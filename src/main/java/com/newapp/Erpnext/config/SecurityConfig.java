@@ -16,23 +16,17 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
-<<<<<<< Updated upstream
-                .requestMatchers("/", "/login", "/api/auth/login", "/css/**", "/js/**", "/images/**", "/dashboard").permitAll()
-                .requestMatchers("/dashboard", "/api/**", 
-                               "/suppliers", "/suppliers/**", 
-                               "/quotations", "/quotations/**", 
-                               "/purchase/**",
-                               "/invoices", "/invoices/**",
-                               "/payments", "/payments/**", "/payments/submit",
-                               "/employees", "/employees/**",
-                               "/salaries", "/salaries/**",
-                               "/import", "/import/**").permitAll()
-=======
                 .requestMatchers("/", "/login", "/api/auth/login", "/css/**", "/js/**", "/images/**").permitAll()
-                .requestMatchers("/dashboard", "/api/**", "/suppliers/**", "/quotations/**", 
-                    "/purchase/**", "/invoices/**", "/payments/**", "/employees/**", 
-                    "/salaries/**","/import/**","/import","/salaries/pdf/**","/salaries","/error").permitAll()
->>>>>>> Stashed changes
+                .requestMatchers("/dashboard", "/api/**", 
+                    "/suppliers", "/suppliers/**", 
+                    "/quotations", "/quotations/**", 
+                    "/purchase/**",
+                    "/invoices", "/invoices/**",
+                    "/payments", "/payments/**", "/payments/submit",
+                    "/employees", "/employees/**",
+                    "/salaries", "/salaries/**", "/salaries/pdf/**",
+                    "/import", "/import/**",
+                    "/error").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

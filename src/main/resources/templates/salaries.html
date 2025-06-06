@@ -138,17 +138,6 @@
                                         <a th:href="@{/employees/{id}(id=${salary.employeeId})}" class="btn btn-sm btn-info me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
-<<<<<<< Updated upstream
-                                        <!-- Dans la section des actions -->
-                                        <!-- Modifier le lien PDF -->
-                                        <a th:href="@{/salaries/pdf/{id}(id=${salary.id})}" class="btn btn-sm btn-secondary" 
-                                           th:data-salary-id="${salary.id}"
-                                           onclick="generatePdf(event, this.getAttribute('data-salary-id'))">
-                                            <i class="bi bi-file-pdf"></i>
-                                            <span class="d-none" th:text="${salary.id}">ID</span>
-                                        </a>
-                                        
-                                        <!-- Ajouter ce script à la fin du fichier -->
                                         <script layout:fragment="javascript">
                                             // Code existant pour réinitialiser les filtres
                                             document.getElementById('reset-filters').addEventListener('click', function() {
@@ -173,14 +162,13 @@
                                                 //    });
                                             }
                                         </script>
-=======
                                         <form th:action="@{/salaries/pdf/salary/view}" method="get" style="display: inline;">
                                             <input type="hidden" name="id" th:value="${salary.id}" />
                                             <button type="submit" class="btn btn-sm btn-secondary">
                                                 <i class="bi bi-file-pdf"></i> Télécharger
                                             </button>
                                         </form>
->>>>>>> Stashed changes
+
                                     </td>
                                 </tr>
                                 <!-- Message si aucun salaire n'est trouvé -->

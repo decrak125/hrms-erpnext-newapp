@@ -12,10 +12,4 @@ public class RestTemplateConfig {
     public RestTemplate restTemplate() {
         return new RestTemplate();
     }
-<<<<<<< Updated upstream:src/main/java/com/newapp/Erpnext/config/RestTemplateConfig.java
-} 
-=======
-
-    
 }
->>>>>>> Stashed changes:src/main/java/com/newapp/Erpnext/config/AppConfig.java
