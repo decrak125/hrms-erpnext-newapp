@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Import HRMS - ERPNext Spring</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <!-- Messages de résultat -->
+                    <div th:if="${errors != null}">
+                        <h3 class="error">Erreurs:</h3>
+                        <ul>
+                            <li th:each="error : ${errors.message}" th:text="${error}"></li>
+                        </ul>
+                    </div>
+                
+                    <!-- Affichage des messages de succès -->
+                    <div th:if="${success != null}">
+                        <h3 class="success">Succès:</h3>
+                        <ul>
+                            <li th:each="msg : ${success}" th:text="${msg}"></li>
+                        </ul>
+                    </div>
+
+                    <div class="card bg-dark text-white mb-4">
+                        <div class="card-body">
+                            <h4 class="card-title mb-4">Import HRMS vers ERPNext</h4>
+                            
+                            <div class="alert alert-info">
+                                <h5 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Instructions</h5>
+                                <p>Veuillez télécharger les trois fichiers CSV requis pour l'importation.</p>
+                                <ul>
+                                    <li>Fichier Employés (.csv) - Contient les informations des employés</li>
+                                    <li>Fichier Structure Salariale (.csv) - Contient les structures de salaire</li>
+                                    <li>Fichier Attribution Salaires (.csv) - Contient les données de paie</li>
+                                </ul>
+                                <p class="mb-0"><small>Taille maximale: 10MB par fichier. Format accepté: CSV uniquement.</small></p>
+                            </div>
+
+                            <form action="/import/api/complete" method="post" enctype="multipart/form-data" id="uploadForm">
+                                <div class="row g-3">
+                                    <div class="col-md-4">
+                                        <div class="card bg-dark text-white border">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="bi bi-people me-2"></i>Fichier Employés
+                                                </h5>
+                                                <input type="file" class="form-control bg-dark text-white" id="employeeFile" name="employee_file" accept=".csv" required>
+                                                <div class="invalid-feedback">
+                                                    Veuillez sélectionner un fichier CSV valide.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="card bg-dark text-white border">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="bi bi-diagram-3 me-2"></i>Structure Salariale
+                                                </h5>
+                                                <input type="file" class="form-control bg-dark text-white" id="salaryStructureFile" name="structure_file" accept=".csv" required>
+                                                <div class="invalid-feedback">
+                                                    Veuillez sélectionner un fichier CSV valide.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="col-md-4">
+                                        <div class="card bg-dark text-white border">
+                                            <div class="card-body">
+                                                <h5 class="card-title">
+                                                    <i class="bi bi-cash-stack me-2"></i>Attribution Salaires
+                                                </h5>
+                                                <input type="file" class="form-control bg-dark text-white" id="salaryAssignmentFile" name="salary_file" accept=".csv" required>
+                                                <div class="invalid-feedback">
+                                                    Veuillez sélectionner un fichier CSV valide.
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="text-end mt-4">
+                                    <button type="submit" class="btn btn-primary" id="submitBtn">
+                                        <i class="bi bi-upload me-2"></i>Importer les fichiers
+                                    </button>
+                                </div>
+                            </form>
+
+                            <div>
+                                <a th:href="@{/import/formats}">Voir les formats de fichiers</a>
+                                <a th:href="@{/import/status}">Vérifier le statut du service</a>
+                                <button type="button" class="btn btn-danger ms-3" id="resetBtn">
+                                    <i class="bi bi-trash me-2"></i>Réinitialiser les données RH
+                                </button>
+                            </div>
+
+                            <!-- Messages de résultat -->
+                            <div class="mt-4">
+                                <!-- Messages d'erreur -->
+                                <div th:if="${errors != null}" class="alert alert-danger">
+                                    <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs</h5>
+                                    <ul class="list-unstyled mb-0">
+                                        <li th:if="${errors instanceof T(java.util.Map)}" th:each="error : ${errors.message}">
+                                            <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
+                                        </li>
+                                        <li th:if="${errors instanceof T(java.util.List)}" th:each="error : ${errors}">
+                                            <i class="bi bi-dot me-2"></i><span th:text="${error}"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+
+                                <!-- Messages de succès -->
+                                <div th:if="${success != null}" class="alert alert-success">
+                                    <h5 class="alert-heading"><i class="bi bi-check-circle me-2"></i>Succès</h5>
+                                    <ul class="list-unstyled mb-0">
+                                        <li th:each="message : ${success}">
+                                            <i class="bi bi-check me-2"></i><span th:text="${message}"></span>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Résultats de validation -->
+                    <div th:if="${errors != null and !errors.isEmpty()}" class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h4 class="card-title mb-4">Résultats de la validation</h4>
+                            
+                            <div th:if="${errors.employee_errors != null}" class="alert alert-danger">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs - Fichier Employés</h5>
+                                <ul class="list-unstyled mb-0">
+                                    <li th:each="error : ${errors.employee_errors}"><i class="bi bi-dot me-2"></i><span th:text="${error}"></span></li>
+                                </ul>
+                            </div>
+                            
+                            <div th:if="${errors.employee_warnings != null}" class="alert alert-warning">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-circle me-2"></i>Avertissements - Fichier Employés</h5>
+                                <ul class="list-unstyled mb-0">
+                                    <li th:each="warning : ${errors.employee_warnings}"><i class="bi bi-dot me-2"></i><span th:text="${warning}"></span></li>
+                                </ul>
+                            </div>
+                            
+                            <div th:if="${errors.structure_errors != null}" class="alert alert-danger">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs - Structure Salariale</h5>
+                                <ul class="list-unstyled mb-0">
+                                    <li th:each="error : ${errors.structure_errors}"><i class="bi bi-dot me-2"></i><span th:text="${error}"></span></li>
+                                </ul>
+                            </div>
+                            
+                            <div th:if="${errors.structure_warnings != null}" class="alert alert-warning">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-circle me-2"></i>Avertissements - Structure Salariale</h5>
+                                <ul class="list-unstyled mb-0">
+                                    <li th:each="warning : ${errors.structure_warnings}"><i class="bi bi-dot me-2"></i><span th:text="${warning}"></span></li>
+                                </ul>
+                            </div>
+                            
+                            <div th:if="${errors.assignment_errors != null}" class="alert alert-danger">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs - Attribution Salaires</h5>
+                                <ul class="list-unstyled mb-0">
+                                    <li th:each="error : ${errors.assignment_errors}"><i class="bi bi-dot me-2"></i><span th:text="${error}"></span></li>
+                                </ul>
+                            </div>
+                            
+                            <div th:if="${errors.assignment_warnings != null}" class="alert alert-warning">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-circle me-2"></i>Avertissements - Attribution Salaires</h5>
+                                <ul class="list-unstyled mb-0">
+                                    <li th:each="warning : ${errors.assignment_warnings}"><i class="bi bi-dot me-2"></i><span th:text="${warning}"></span></li>
+                                </ul>
+                            </div>
+                            
+                            <div th:if="${errors.reference_errors != null}" class="alert alert-danger">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Erreurs - Références croisées</h5>
+                                <ul class="list-unstyled mb-0">
+                                    <li th:each="error : ${errors.reference_errors}"><i class="bi bi-dot me-2"></i><span th:text="${error}"></span></li>
+                                </ul>
+                            </div>
+                            
+                            <div th:if="${errors.reference_warnings != null}" class="alert alert-warning">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-circle me-2"></i>Avertissements - Références croisées</h5>
+                                <ul class="list-unstyled mb-0">
+                                    <li th:each="warning : ${errors.reference_warnings}"><i class="bi bi-dot me-2"></i><span th:text="${warning}"></span></li>
+                                </ul>
+                            </div>
+                            
+                            <div th:if="${errors.message != null}" class="alert alert-danger">
+                                <h5 class="alert-heading"><i class="bi bi-exclamation-triangle me-2"></i>Erreur générale</h5>
+                                <p class="mb-0" th:text="${errors.message}"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Résultats de l'importation -->
+                    <div th:if="${success != null}" class="card bg-dark text-white">
+                        <div class="card-body">
+                            <h4 class="card-title mb-4">
+                                <i class="bi bi-check-circle-fill text-success me-2"></i>Résultats de l'importation
+                            </h4>
+                            <ul class="list-group list-group-flush bg-dark">
+                                <li th:each="message : ${success}" class="list-group-item bg-dark text-white border-light">
+                                    <i class="bi bi-check me-2 text-success"></i>
+                                    <span th:text="${message}"></span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <th:block layout:fragment="javascript">
+        <script th:inline="javascript">
+            document.getElementById('uploadForm').addEventListener('submit', function(e) {
+                const submitBtn = document.getElementById('submitBtn');
+                submitBtn.disabled = true;
+                submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Import en cours...';
+            });
+
+            // Validation des fichiers
+            document.querySelectorAll('input[type="file"]').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    if (this.files[0]) {
+                        const file = this.files[0];
+                        if (!file.name.toLowerCase().endsWith('.csv')) {
+                            this.value = '';
+                            this.classList.add('is-invalid');
+                        } else if (file.size > 10 * 1024 * 1024) { // 10MB
+                            this.value = '';
+                            this.classList.add('is-invalid');
+                        } else {
+                            this.classList.remove('is-invalid');
+                        }
+                    }
+                });
+            });
+
+            // Gestion de la réinitialisation RH
+            document.getElementById('resetBtn').addEventListener('click', function() {
+                if (confirm('Êtes-vous sûr de vouloir réinitialiser toutes les données RH ? Cette action est irréversible.')) {
+                    const btn = this;
+                    btn.disabled = true;
+                    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Réinitialisation en cours...';
+
+                    fetch('/import/api/reset', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.message) {
+                            alert('Réinitialisation réussie : ' + data.message);
+                            location.reload();
+                        } else {
+                            throw new Error('Réponse invalide du serveur');
+                        }
+                    })
+                    .catch(error => {
+                        alert('Erreur lors de la réinitialisation : ' + error.message);
+                    })
+                    .finally(() => {
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="bi bi-trash me-2"></i>Réinitialiser les données RH';
+                    });
+                }
+            });
+        </script>
+    </th:block>
+</body>
+</html>
