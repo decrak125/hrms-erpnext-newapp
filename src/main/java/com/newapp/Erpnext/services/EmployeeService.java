@@ -11,6 +11,7 @@ import org.springframework.boot.web.client.RestTemplateBuilder;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -510,5 +511,255 @@ public class EmployeeService {
             e.printStackTrace();
             return null;
         }
+    }
+
+    public byte[] generateSalaryPayslipPdf(Map<String, Object> salaryData) {
+        try {
+            // Créer le document PDF avec une gestion explicite des ressources
+            ByteArrayOutputStream baos = new ByteArrayOutputStream();
+            Document document = new Document(PageSize.A4, 36, 36, 54, 36); // Marges plus élégantes
+            PdfWriter writer = PdfWriter.getInstance(document, baos);
+            document.open();
+
+            // Polices
+            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 24, new Color(0, 51, 102));
+            Font subTitleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, new Color(0, 51, 102));
+            Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, new Color(0, 51, 102));
+            Font headerWhiteFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 11, Color.WHITE);
+            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 11, new Color(51, 51, 51));
+            Font smallFont = FontFactory.getFont(FontFactory.HELVETICA, 9, new Color(102, 102, 102));
+            Font smallWhiteFont = FontFactory.getFont(FontFactory.HELVETICA, 9, Color.WHITE);
+
+            // En-tête avec bande colorée
+            PdfPTable headerBand = new PdfPTable(1);
+            headerBand.setWidthPercentage(100);
+            PdfPCell bandCell = new PdfPCell(new Phrase(" "));
+            bandCell.setBackgroundColor(new Color(0, 51, 102));
+            bandCell.setFixedHeight(8f);
+            bandCell.setBorder(Rectangle.NO_BORDER);
+            headerBand.addCell(bandCell);
+            document.add(headerBand);
+
+            // Titre principal
+            Paragraph title = new Paragraph();
+            title.add(new Chunk("BULLETIN DE PAIE\n", titleFont));
+            title.add(new Chunk(getString(salaryData, "month"), subTitleFont));
+            title.setAlignment(Element.ALIGN_CENTER);
+            title.setSpacingBefore(20);
+            title.setSpacingAfter(30);
+            document.add(title);
+
+            // Section informations employé
+            PdfPTable mainTable = new PdfPTable(2);
+            mainTable.setWidthPercentage(100);
+            mainTable.setSpacingAfter(20);
+
+            // Colonne gauche - Informations employé
+            PdfPCell leftCell = new PdfPCell();
+            leftCell.setBorder(Rectangle.BOX);
+            leftCell.setBackgroundColor(new Color(240, 240, 240));
+            leftCell.setPadding(10);
+
+            Paragraph empInfo = new Paragraph();
+            empInfo.add(new Chunk("INFORMATIONS EMPLOYÉ\n", headerFont));
+            empInfo.add(new Chunk("\n"));
+            empInfo.add(new Chunk("ID: " + getString(salaryData, "employeeId") + "\n", normalFont));
+            empInfo.add(new Chunk("Nom: " + getString(salaryData, "employeeName") + "\n", normalFont));
+            empInfo.add(new Chunk("Département: " + getString(salaryData, "department") + "\n", normalFont));
+            leftCell.addElement(empInfo);
+            mainTable.addCell(leftCell);
+
+            // Colonne droite - Informations paie
+            PdfPCell rightCell = new PdfPCell();
+            rightCell.setBorder(Rectangle.BOX);
+            rightCell.setBackgroundColor(new Color(240, 240, 240));
+            rightCell.setPadding(10);
+
+            Paragraph payInfo = new Paragraph();
+            payInfo.add(new Chunk("INFORMATIONS PAIE\n", headerFont));
+            payInfo.add(new Chunk("\n"));
+            payInfo.add(new Chunk("Période: " + getString(salaryData, "month") + "\n", normalFont));
+            if (salaryData.get("paymentDate") != null) {
+                payInfo.add(new Chunk("Date de paiement: " + ((LocalDate)salaryData.get("paymentDate")).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) + "\n", normalFont));
+            }
+            payInfo.add(new Chunk("Statut: " + getString(salaryData, "status") + "\n", normalFont));
+            rightCell.addElement(payInfo);
+            mainTable.addCell(rightCell);
+
+            document.add(mainTable);
+
+            // Tableau détaillé des montants
+            PdfPTable detailTable = new PdfPTable(4);
+            detailTable.setWidthPercentage(100);
+            detailTable.setSpacingBefore(20);
+            float[] columnWidths = {3f, 2f, 2f, 2f};
+            detailTable.setWidths(columnWidths);
+
+            // En-têtes du tableau détaillé
+            String[] headers = {"Description", "Base", "Taux", "Montant"};
+            for (String header : headers) {
+                PdfPCell headerCell = new PdfPCell(new Phrase(header, headerWhiteFont));
+                headerCell.setBackgroundColor(new Color(0, 51, 102));
+                headerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+                headerCell.setPadding(8);
+                detailTable.addCell(headerCell);
+            }
+
+            // Formatter pour les montants
+            NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(Locale.FRANCE);
+
+            // Salaire de base
+            addDetailRow(detailTable, "Salaire de base", "100%", "-", 
+                formatAmount(salaryData.get("grossAmount"), currencyFormatter), normalFont);
+
+            // Déductions
+            addDetailRow(detailTable, "Cotisations sociales", "-", "20%", 
+                formatAmount(salaryData.get("taxAmount"), currencyFormatter), normalFont);
+
+            // Ligne de total
+            PdfPCell totalLabelCell = new PdfPCell(new Phrase("SALAIRE NET", headerFont));
+            totalLabelCell.setColspan(3);
+            totalLabelCell.setBackgroundColor(new Color(220, 220, 220));
+            totalLabelCell.setPadding(8);
+            totalLabelCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+            detailTable.addCell(totalLabelCell);
+
+            PdfPCell totalAmountCell = new PdfPCell(new Phrase(
+                formatAmount(salaryData.get("netAmount"), currencyFormatter), headerFont));
+            totalAmountCell.setBackgroundColor(new Color(220, 220, 220));
+            totalAmountCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            totalAmountCell.setPadding(8);
+            detailTable.addCell(totalAmountCell);
+
+            document.add(detailTable);
+
+            // Note de bas de page
+            document.add(new Paragraph("\n"));
+            Paragraph note = new Paragraph("Note: Ce bulletin de paie est un document officiel à conserver sans limitation de durée.", smallFont);
+            note.setSpacingBefore(20);
+            document.add(note);
+
+            // Pied de page avec bande colorée
+            document.add(new Paragraph("\n"));
+            PdfPTable footerBand = new PdfPTable(1);
+            footerBand.setWidthPercentage(100);
+            PdfPCell footerCell = new PdfPCell(new Phrase("Document généré le " + 
+                LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), smallWhiteFont));
+            footerCell.setBackgroundColor(new Color(0, 51, 102));
+            footerCell.setPadding(8);
+            footerCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            footerBand.addCell(footerCell);
+            document.add(footerBand);
+
+            // Fermer le document
+            document.close();
+            writer.close();
+
+            return baos.toByteArray();
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la génération du PDF: " + e.getMessage());
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    private void addDetailRow(PdfPTable table, String description, String base, String rate, String amount, Font font) {
+        PdfPCell descCell = new PdfPCell(new Phrase(description, font));
+        descCell.setPadding(5);
+        descCell.setHorizontalAlignment(Element.ALIGN_LEFT);
+        table.addCell(descCell);
+
+        PdfPCell baseCell = new PdfPCell(new Phrase(base, font));
+        baseCell.setPadding(5);
+        baseCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        table.addCell(baseCell);
+
+        PdfPCell rateCell = new PdfPCell(new Phrase(rate, font));
+        rateCell.setPadding(5);
+        rateCell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        table.addCell(rateCell);
+
+        PdfPCell amountCell = new PdfPCell(new Phrase(amount, font));
+        amountCell.setPadding(5);
+        amountCell.setHorizontalAlignment(Element.ALIGN_RIGHT);
+        table.addCell(amountCell);
+    }
+
+    private String getString(Map<String, Object> map, String key) {
+        Object value = map.get(key);
+        return value != null ? value.toString() : "-";
+    }
+
+    private String formatAmount(Object amount, NumberFormat formatter) {
+        if (amount == null) {
+            return "-";
+        }
+        try {
+            if (amount instanceof BigDecimal) {
+                return formatter.format(amount);
+            } else if (amount instanceof Number) {
+                return formatter.format(((Number) amount).doubleValue());
+            } else {
+                return formatter.format(Double.parseDouble(amount.toString()));
+            }
+        } catch (Exception e) {
+            return amount.toString();
+        }
+    }
+
+    public Salary getSalaryById(String salaryId) {
+        HttpHeaders headers = createHeaders();
+        HttpEntity<String> entity = new HttpEntity<>(headers);
+        
+        String url = erpNextUrl + "/api/resource/Salary Slip/" + salaryId + 
+            "?fields=[\"name\",\"employee\",\"posting_date\",\"start_date\",\"end_date\",\"gross_pay\",\"net_pay\",\"total_deduction\",\"status\"]";
+        
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                entity,
+                Map.class
+            );
+            
+            if (response.getStatusCode() == HttpStatus.OK) {
+                Map<String, Object> responseBody = response.getBody();
+                Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
+                
+                Salary salary = new Salary();
+                salary.setId((String) data.get("name"));
+                salary.setEmployeeId((String) data.get("employee"));
+                
+                if (data.get("posting_date") != null) {
+                    String dateStr = (String) data.get("posting_date");
+                    salary.setPaymentDate(LocalDate.parse(dateStr, DateTimeFormatter.ISO_DATE));
+                }
+                
+                if (data.get("start_date") != null) {
+                    String startDateStr = (String) data.get("start_date");
+                    LocalDate startDate = LocalDate.parse(startDateStr, DateTimeFormatter.ISO_DATE);
+                    salary.setMonth(startDate.getYear() + "-" + String.format("%02d", startDate.getMonthValue()));
+                }
+                
+                if (data.get("gross_pay") != null) {
+                    salary.setGrossAmount(new BigDecimal(data.get("gross_pay").toString()));
+                }
+                
+                if (data.get("net_pay") != null) {
+                    salary.setNetAmount(new BigDecimal(data.get("net_pay").toString()));
+                }
+                
+                if (data.get("total_deduction") != null) {
+                    salary.setTaxAmount(new BigDecimal(data.get("total_deduction").toString()));
+                }
+                
+                salary.setStatus((String) data.get("status"));
+                return salary;
+            }
+        } catch (Exception e) {
+            System.err.println("Erreur lors de la récupération du salaire ID: " + salaryId + ": " + e.getMessage());
+            return null;
+        }
+        return null;
     }
 }
