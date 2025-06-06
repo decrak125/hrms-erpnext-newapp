@@ -55,3 +55,4 @@ public class SalaryStructureAssignment {
         this.company = company;
     }
 }
+}

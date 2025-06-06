@@ -52,4 +52,12 @@ public class WebController {
         }
         return "dashboard";  // Retourne directement la vue "dashboard", pas de redirection
     }
+    
+    @GetMapping("/import-hrms")
+    public String importHrms() {
+        if (!sessionService.isAuthenticated()) {
+            return "redirect:/login";
+        }
+        return "redirect:/import";
+    }
 }

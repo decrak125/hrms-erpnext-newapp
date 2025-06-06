@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Formats d'importation - ERPNext Spring</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col-12">
+                    <div class="card bg-dark text-white mb-4">
+                        <div class="card-body">
+                            <h4 class="card-title mb-4">Formats des fichiers d'importation</h4>
+                            
+                            <div class="alert alert-info">
+                                <h5 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Instructions générales</h5>
+                                <ul>
+                                    <li>Tous les fichiers doivent être au format CSV</li>
+                                    <li>Les dates doivent être au format DD/MM/YYYY</li>
+                                    <li>Les nombres décimaux doivent utiliser le point comme séparateur</li>
+                                    <li>Les champs sont séparés par des virgules</li>
+                                    <li>La première ligne doit contenir les en-têtes</li>
+                                </ul>
+                            </div>
+
+                            <div class="row g-4">
+                                <!-- Format Employés -->
+                                <div class="col-md-4">
+                                    <div class="card bg-dark border">
+                                        <div class="card-body">
+                                            <h5 class="card-title">
+                                                <i class="bi bi-people me-2"></i>Format Employés
+                                            </h5>
+                                            <p class="card-text">
+                                                <code th:text="${employeeFormat}"></code>
+                                            </p>
+                                            <h6>Exemple :</h6>
+                                            <pre class="bg-light text-dark p-2 rounded">1,Rakoto,Alain,Masculin,03/04/2024,01/01/1980,My Company</pre>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Format Structure Salariale -->
+                                <div class="col-md-4">
+                                    <div class="card bg-dark border">
+                                        <div class="card-body">
+                                            <h5 class="card-title">
+                                                <i class="bi bi-diagram-3 me-2"></i>Format Structure Salariale
+                                            </h5>
+                                            <p class="card-text">
+                                                <code th:text="${structureFormat}"></code>
+                                            </p>
+                                            <h6>Exemple :</h6>
+                                            <pre class="bg-light text-dark p-2 rounded">STR001,Base,BS,E,B,My Company</pre>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Format Attribution Salaires -->
+                                <div class="col-md-4">
+                                    <div class="card bg-dark border">
+                                        <div class="card-body">
+                                            <h5 class="card-title">
+                                                <i class="bi bi-cash-stack me-2"></i>Format Attribution Salaires
+                                            </h5>
+                                            <p class="card-text">
+                                                <code th:text="${salaryFormat}"></code>
+                                            </p>
+                                            <h6>Exemple :</h6>
+                                            <pre class="bg-light text-dark p-2 rounded">01/01/2024,1,500000,STR001</pre>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="text-end mt-4">
+                                <a href="/import" class="btn btn-primary">
+                                    <i class="bi bi-arrow-left me-2"></i>Retour à l'importation
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
