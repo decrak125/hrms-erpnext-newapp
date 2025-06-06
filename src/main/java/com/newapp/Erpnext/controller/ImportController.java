@@ -129,12 +129,65 @@ public class ImportController {
             redirectAttributes.addFlashAttribute("errors", response);
             return "redirect:/import";
         } catch (Exception e) {
+<<<<<<< Updated upstream
             logger.error("Erreur inattendue lors de l'upload", e);
             response.put("success", false);
             response.put("message", "Erreur lors du téléchargement des fichiers: " + e.getMessage());
             redirectAttributes.addFlashAttribute("errors", response);
             cleanupFiles(employeeFilePath, salaryStructureFilePath, salaryAssignmentFilePath);
             return "redirect:/import";
+=======
+            logger.error("Erreur inattendue lors de l'importation", e);
+            errors.addMessage("Une erreur inattendue s'est produite : " + e.getMessage());
+            model.addAttribute("errors", errors);
+        }
+
+        return "import";
+    }
+
+    // New endpoint for resetting HR data
+    @PostMapping("/api/reset")
+    @ResponseBody
+    public ResponseEntity<Map<String, Object>> handleReset(HttpSession session) {
+        logger.info("Début de la procédure de réinitialisation RH");
+        Map<String, Object> response = new HashMap<>();
+        
+        try {
+            // Verify session
+            if (!sessionService.isAuthenticated()) {
+                logger.error("L'utilisateur n'est pas authentifié");
+                response.put("message", "Veuillez vous connecter pour réinitialiser les données RH.");
+                return ResponseEntity.status(401).body(response);
+            }
+
+            // Get or create import session
+            String sid = sessionService.getOrCreateImportSid(session);
+            if (sid == null) {
+                logger.error("Impossible de créer ou récupérer une session ERPNext");
+                response.put("message", "Erreur de connexion avec ERPNext. Veuillez réessayer.");
+                return ResponseEntity.status(500).body(response);
+            }
+
+            // Call reset_rh via ImportService
+            boolean success = importService.reset_rh(session);
+            if (success) {
+                logger.info("Réinitialisation RH réussie");
+                response.put("message", "Données RH réinitialisées avec succès.");
+                return ResponseEntity.ok(response);
+            } else {
+                logger.error("Échec de la réinitialisation RH");
+                response.put("message", "Échec de la réinitialisation des données RH.");
+                return ResponseEntity.status(500).body(response);
+            }
+        } catch (ImportException e) {
+            logger.error("Erreur lors de la réinitialisation RH", e);
+            response.put("message", "Erreur lors de la réinitialisation : " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+        } catch (Exception e) {
+            logger.error("Erreur inattendue lors de la réinitialisation RH", e);
+            response.put("message", "Une erreur inattendue s'est produite : " + e.getMessage());
+            return ResponseEntity.status(500).body(response);
+>>>>>>> Stashed changes
         }
     }
 

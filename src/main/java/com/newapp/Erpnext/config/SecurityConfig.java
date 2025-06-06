@@ -16,6 +16,7 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(authorize -> authorize
+<<<<<<< Updated upstream
                 .requestMatchers("/", "/login", "/api/auth/login", "/css/**", "/js/**", "/images/**", "/dashboard").permitAll()
                 .requestMatchers("/dashboard", "/api/**", 
                                "/suppliers", "/suppliers/**", 
@@ -26,6 +27,12 @@ public class SecurityConfig {
                                "/employees", "/employees/**",
                                "/salaries", "/salaries/**",
                                "/import", "/import/**").permitAll()
+=======
+                .requestMatchers("/", "/login", "/api/auth/login", "/css/**", "/js/**", "/images/**").permitAll()
+                .requestMatchers("/dashboard", "/api/**", "/suppliers/**", "/quotations/**", 
+                    "/purchase/**", "/invoices/**", "/payments/**", "/employees/**", 
+                    "/salaries/**","/import/**","/import","/salaries/pdf/**","/salaries","/error").permitAll()
+>>>>>>> Stashed changes
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

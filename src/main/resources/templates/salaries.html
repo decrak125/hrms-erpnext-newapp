@@ -8,6 +8,17 @@
         <div class="container-fluid">
             <div class="d-flex justify-content-between align-items-center mb-4">
                 <h2 class="mb-0">Gestion des Salaires</h2>
+                <button id="generateMonthlyPayslips" class="btn btn-primary" 
+                        th:if="${selectedMonth != null && !selectedMonth.empty}"
+                        th:onclick="'window.location.href=\'/salaries/pdf/month/' + ${selectedMonth} + '\''">
+                    <i class="bi bi-file-pdf"></i> Générer les fiches du mois
+                </button>
+            </div>
+            
+            <!-- Messages d'erreur -->
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <span th:text="${error}">Message d'erreur</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             </div>
             
             <!-- Filtres -->
@@ -127,6 +138,7 @@
                                         <a th:href="@{/employees/{id}(id=${salary.employeeId})}" class="btn btn-sm btn-info me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
+<<<<<<< Updated upstream
                                         <!-- Dans la section des actions -->
                                         <!-- Modifier le lien PDF -->
                                         <a th:href="@{/salaries/pdf/{id}(id=${salary.id})}" class="btn btn-sm btn-secondary" 
@@ -161,6 +173,14 @@
                                                 //    });
                                             }
                                         </script>
+=======
+                                        <form th:action="@{/salaries/pdf/salary/view}" method="get" style="display: inline;">
+                                            <input type="hidden" name="id" th:value="${salary.id}" />
+                                            <button type="submit" class="btn btn-sm btn-secondary">
+                                                <i class="bi bi-file-pdf"></i> Télécharger
+                                            </button>
+                                        </form>
+>>>>>>> Stashed changes
                                     </td>
                                 </tr>
                                 <!-- Message si aucun salaire n'est trouvé -->
@@ -174,12 +194,51 @@
             </div>
         </div>
     </div>
+
+    
     
     <script layout:fragment="javascript">
         // Réinitialiser les filtres et soumettre le formulaire
         document.getElementById('reset-filters').addEventListener('click', function() {
             document.getElementById('filter-form').reset();
             document.getElementById('filter-form').submit();
+        });
+
+        // Gérer les clics sur les liens de téléchargement PDF
+        document.querySelectorAll('form[action*="/pdf/"]').forEach(function(form) {
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const formData = new FormData(this);
+                const url = this.action + '?' + new URLSearchParams(formData).toString();
+                
+                fetch(url)
+                    .then(response => {
+                        if (response.status === 401) {
+                            window.location.href = '/login';
+                            return null;
+                        }
+                        if (!response.ok) {
+                            throw new Error('Erreur lors de la génération du PDF');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        if (blob) {
+                            const url = window.URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'fiche-paie.pdf';
+                            document.body.appendChild(a);
+                            a.click();
+                            window.URL.revokeObjectURL(url);
+                            a.remove();
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Erreur:', error);
+                        alert('Une erreur est survenue lors du téléchargement du PDF');
+                    });
+            });
         });
     </script>
 </body>

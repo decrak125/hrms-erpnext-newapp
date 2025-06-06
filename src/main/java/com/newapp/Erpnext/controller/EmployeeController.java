@@ -116,4 +116,6 @@ public class EmployeeController {
     public List<Salary> getEmployeeSalaries(@PathVariable String id) {
         return employeeService.getEmployeeSalaries(id);
     }
+
+    
 }

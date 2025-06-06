@@ -101,6 +101,7 @@
                                     <th>Montant net</th>
                                     <th>Impôts</th>
                                     <th>Statut</th>
+                                    <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -115,6 +116,11 @@
                                     <td>
                                         <span th:class="${salary.status == 'Paid' ? 'badge bg-success' : 'badge bg-warning'}" 
                                               th:text="${salary.status}">Statut</span>
+                                    </td>
+                                    <td>
+                                        <a th:href="@{/salaries/pdf/{id}(id=${employee.id})}" class="btn btn-sm btn-info me-1">
+                                            <i class="bi bi-file-pdf"></i>
+                                        </a>
                                     </td>
                                 </tr>
                                 <!-- Message si aucun salaire n'est trouvé -->
