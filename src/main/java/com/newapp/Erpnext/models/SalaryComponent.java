@@ -38,4 +38,3 @@ public class SalaryComponent {
     public SalaryComponent() {
     }
 }
-}
