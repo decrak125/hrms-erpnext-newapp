@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Détails des Salaires des Employés</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+    <div class="container mt-5">
+        <h1>Détails des Salaires des Employés - <span th:text="${month} + '/' + ${year}"></span></h1>
+
+        <!-- Display error message if present -->
+        <div th:if="${error}" class="alert alert-danger" role="alert">
+            <span th:text="${error}"></span>
+        </div>
+
+        <!-- Employee Salary Details Table -->
+        <table class="table table-bordered">
+            <thead>
+                <tr>
+                    <th>ID Employé</th>
+                    <th>Nom Employé</th>
+                    <th>Total des Salaires</th>
+                    <th>Composants</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr th:each="detail : ${employeeDetails}">
+                    <td th:text="${detail.employeeId}"></td>
+                    <td th:text="${detail.employeeName}"></td>
+                    <td th:text="${#numbers.formatDecimal(detail.totalSalary, 1, 2, 'COMMA')} + ' €'"></td>
+                    <td>
+                        <div th:each="entry : ${detail.salaryComponentDetails}">
+                            <span th:text="${entry.key} + ': ' + ${#numbers.formatDecimal(entry.value, 1, 2, 'COMMA')} + ' €'"></span><br/>
+                        </div>
+                        <span th:if="${detail.salaryComponentDetails.isEmpty()}">Aucune donnée disponible</span>
+                    </td>
+                </tr>
+                <tr th:if="${employeeDetails.isEmpty()}">
+                    <td colspan="4">Aucune donnée disponible pour cette période</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Back Button -->
+        <a th:href="@{/salary-statistics(year=${year})}" class="btn btn-primary">Retour</a>
+    </div>
+</body>
+</html>

@@ -26,11 +26,8 @@ public class SecurityConfig {
                     "/employees", "/employees/**",
                     "/salaries", "/salaries/**", "/salaries/pdf/**",
                     "/import", "/import/**",
+                    "/salary-statistics", "/salary-statistics/**",
                     "/error").permitAll()
-                // .requestMatchers("/import/**").permitAll()
-                .requestMatchers("/dashboard", "/api/**", "/suppliers/**", "/quotations/**", 
-                    "/purchase/**", "/invoices/**", "/payments/**", "/employees/**", 
-                    "/salaries/**","/import/**","/import").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form

@@ -10,7 +10,7 @@
                 <h2 class="mb-0">Gestion des Salaires</h2>
                 <button id="generateMonthlyPayslips" class="btn btn-primary" 
                         th:if="${selectedMonth != null && !selectedMonth.empty}"
-                        th:onclick="'window.location.href=\'/salaries/pdf/month/' + ${selectedMonth} + '\''">
+                        th:data-month="${selectedMonth}">
                     <i class="bi bi-file-pdf"></i> Générer les fiches du mois
                 </button>
             </div>
@@ -138,37 +138,12 @@
                                         <a th:href="@{/employees/{id}(id=${salary.employeeId})}" class="btn btn-sm btn-info me-1">
                                             <i class="bi bi-eye"></i>
                                         </a>
-                                        <script layout:fragment="javascript">
-                                            // Code existant pour réinitialiser les filtres
-                                            document.getElementById('reset-filters').addEventListener('click', function() {
-                                                document.getElementById('filter-form').reset();
-                                                document.getElementById('filter-form').submit();
-                                            });
-                                            
-                                            // Fonction pour gérer la génération de PDF avec gestion d'erreur
-                                            function generatePdf(event, salaryId) {
-                                                console.log('Exporting salary ID:', salaryId);
-                                                // Optionnel: Ajouter une gestion d'erreur côté client
-                                                // fetch('/salaries/pdf/' + salaryId)
-                                                //    .then(response => {
-                                                //        if (!response.ok) {
-                                                //            alert('Erreur lors de la génération du PDF');
-                                                //            event.preventDefault();
-                                                //        }
-                                                //    })
-                                                //    .catch(error => {
-                                                //        alert('Erreur: ' + error);
-                                                //        event.preventDefault();
-                                                //    });
-                                            }
-                                        </script>
                                         <form th:action="@{/salaries/pdf/salary/view}" method="get" style="display: inline;">
                                             <input type="hidden" name="id" th:value="${salary.id}" />
                                             <button type="submit" class="btn btn-sm btn-secondary">
                                                 <i class="bi bi-file-pdf"></i> Télécharger
                                             </button>
                                         </form>
-
                                     </td>
                                 </tr>
                                 <!-- Message si aucun salaire n'est trouvé -->
@@ -183,13 +158,19 @@
         </div>
     </div>
 
-    
-    
     <script layout:fragment="javascript">
         // Réinitialiser les filtres et soumettre le formulaire
         document.getElementById('reset-filters').addEventListener('click', function() {
             document.getElementById('filter-form').reset();
             document.getElementById('filter-form').submit();
+        });
+
+        // Gérer la génération des fiches du mois
+        document.getElementById('generateMonthlyPayslips').addEventListener('click', function() {
+            const month = this.getAttribute('data-month');
+            if (month) {
+                window.location.href = '/salaries/pdf/month/' + month;
+            }
         });
 
         // Gérer les clics sur les liens de téléchargement PDF
