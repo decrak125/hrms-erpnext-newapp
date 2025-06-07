@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Statistiques des Salaires - ERPNext Spring</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@3.9.1/dist/chart.min.js"></script>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Statistiques des Salaires</h2>
+            </div>
+            
+            <!-- Messages d'erreur -->
+            <div th:if="${error}" class="alert alert-danger alert-dismissible fade show mb-4" role="alert">
+                <span th:text="${error}">Message d'erreur</span>
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
+            
+            <!-- Filtres -->
+            <div class="card bg-dark text-white mb-4">
+                <div class="card-body">
+                    <form th:action="@{/salary-statistics}" method="get" class="row g-3">
+                        <div class="col-md-3">
+                            <label for="year" class="form-label">Année</label>
+                            <select id="year" name="year" class="form-select bg-dark text-white">
+                                <option th:each="i : ${#numbers.sequence(currentYear - 5, currentYear + 5)}"
+                                        th:value="${i}"
+                                        th:text="${i}"
+                                        th:selected="${i == selectedYear}"></option>
+                            </select>
+                        </div>
+                        <div class="col-md-12 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary">Valider</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            <!-- Graphiques et statistiques -->
+            <div th:if="${statistics != null and !statistics.isEmpty()}">
+                <!-- Graphique d'évolution du total des salaires -->
+                <div class="card bg-dark text-white mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Évolution du Total des Salaires</h5>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="totalSalaryChart" style="width: 100%; height: 300px;"></canvas>
+                    </div>
+                </div>
+
+                <!-- Graphique des composants de salaire -->
+                <div class="card bg-dark text-white mb-4">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Évolution des Composants de Salaire</h5>
+                        <button id="toggleBarView" class="btn btn-secondary btn-sm">Vue Barres</button>
+                    </div>
+                    <div class="card-body">
+                        <canvas id="componentChart" style="width: 100%; height: 300px;"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Message si aucune donnée -->
+            <div th:unless="${statistics != null and !statistics.isEmpty()}" class="card bg-dark text-white mb-4">
+                <div class="card-body text-center">
+                    <p class="text-muted mb-0">Aucune donnée disponible pour cette période</p>
+                </div>
+            </div>
+            
+            <!-- Tableau des statistiques détaillées -->
+            <div class="card bg-dark text-white">
+                <div class="card-header">
+                    <h5 class="mb-0">Détail par Mois</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-dark table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Mois</th>
+                                    <th class="text-end">Total des Salaires</th>
+                                    <th class="text-end">Détail des Composants</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr th:each="stat : ${statistics}">
+                                    <td th:text="${stat.monthName} + ' ' + ${stat.year}">Janvier 2025</td>
+                                    <td class="text-end">
+                                        <a th:href="@{/salary-statistics/details(year=${stat.year},month=${stat.month})}"
+                                           class="text-success text-decoration-none fw-bold"
+                                           th:text="${#numbers.formatDecimal(stat.totalSalary, 0, 'COMMA', 2, 'POINT')} + ' €'">0.00 €</a>
+                                    </td>
+                                    <td class="text-end">
+                                        <div th:each="entry : ${stat.salaryComponentDetails}" class="small text-white">
+                                            <span th:text="${entry.key} + ': ' + ${#numbers.formatDecimal(entry.value, 0, 'COMMA', 2, 'POINT')} + ' €'">Composant: 0.00 €</span>
+                                        </div>
+                                        <span th:if="${stat.salaryComponentDetails == null or stat.salaryComponentDetails.isEmpty()}" 
+                                        class="small text-white">Aucune donnée disponible</span>
+                                    </td>
+                                </tr>
+                                <tr th:if="${statistics == null or statistics.isEmpty()}">
+                                    <td colspan="3" class="text-center text-muted">
+                                        Aucune donnée disponible pour cette période
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script layout:fragment="javascript" th:inline="javascript">
+        /*<![CDATA[*/
+        document.addEventListener('DOMContentLoaded', function() {
+            // Vérifier si Chart.js est chargé
+            if (typeof Chart === 'undefined') {
+                console.error('Chart.js n\'est pas chargé');
+                return;
+            }
+            
+            const statistics = /*[[${statistics}]]*/ [];
+            if (!statistics || statistics.length === 0) {
+                console.log('Aucune donnée de statistiques disponible');
+                return;
+            }
+
+            const monthLabels = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Juin', 'Juil', 'Août', 'Sep', 'Oct', 'Nov', 'Déc'];
+            const components = new Set();
+            
+            statistics.forEach(stat => {
+                if (stat.salaryComponentDetails) {
+                    Object.keys(stat.salaryComponentDetails).forEach(key => components.add(key));
+                }
+            });
+
+            // Fonction pour obtenir une couleur
+            function getColor(index) {
+                const colors = ['#17a2b8', '#dc3545', '#ffc107', '#28a745', '#6610f2', '#e83e8c', '#fd7e14', '#20c997', '#6f42c1'];
+                return colors[index % colors.length];
+            }
+
+            // Configuration commune des graphiques
+            Chart.defaults.color = '#e9ecef';
+            Chart.defaults.borderColor = 'rgba(255, 255, 255, 0.1)';
+
+            // Total Salary Line Chart
+            const totalCanvas = document.getElementById('totalSalaryChart');
+            if (totalCanvas) {
+                const totalCtx = totalCanvas.getContext('2d');
+                new Chart(totalCtx, {
+                    type: 'line',
+                    data: {
+                        labels: monthLabels,
+                        datasets: [{
+                            label: 'Total des Salaires',
+                            data: statistics.map(stat => (stat.totalSalary || 0).toFixed(2)),
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.2)',
+                            fill: true,
+                            tension: 0.4
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: '#e9ecef' }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Évolution du Total des Salaires pour ' + /*[[${selectedYear}]]*/ 2025,
+                                color: '#e9ecef',
+                                font: { size: 16 }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Mois', color: '#e9ecef' },
+                                ticks: { color: '#e9ecef' },
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Montant (€)', color: '#e9ecef' },
+                                ticks: {
+                                    color: '#e9ecef',
+                                    callback: function(value) {
+                                        return new Intl.NumberFormat('fr-FR', {
+                                            style: 'currency',
+                                            currency: 'EUR',
+                                            minimumFractionDigits: 0
+                                        }).format(value);
+                                    }
+                                },
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        }
+                    }
+                });
+            }
+
+            // Component Bar Chart
+            const componentCanvas = document.getElementById('componentChart');
+            if (componentCanvas) {
+                const componentCtx = componentCanvas.getContext('2d');
+                let componentChart = new Chart(componentCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: monthLabels,
+                        datasets: Array.from(components).map((component, index) => ({
+                            label: component,
+                            data: statistics.map(stat => ((stat.salaryComponentDetails && stat.salaryComponentDetails[component]) || 0).toFixed(2)),
+                            backgroundColor: getColor(index),
+                            stack: 'Stack 0'
+                        }))
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                position: 'top',
+                                labels: { color: '#e9ecef' }
+                            },
+                            title: {
+                                display: true,
+                                text: 'Évolution des Composants de Salaire pour ' + /*[[${selectedYear}]]*/ 2025,
+                                color: '#e9ecef',
+                                font: { size: 16 }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: { display: true, text: 'Mois', color: '#e9ecef' },
+                                ticks: { color: '#e9ecef' },
+                                stacked: true,
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            },
+                            y: {
+                                title: { display: true, text: 'Montant (€)', color: '#e9ecef' },
+                                ticks: {
+                                    color: '#e9ecef',
+                                    callback: function(value) {
+                                        return new Intl.NumberFormat('fr-FR', {
+                                            style: 'currency',
+                                            currency: 'EUR',
+                                            minimumFractionDigits: 0
+                                        }).format(value);
+                                    }
+                                },
+                                stacked: true,
+                                beginAtZero: true,
+                                grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                            }
+                        }
+                    }
+                });
+
+                // Gestion du bouton de basculement
+                const toggleButton = document.getElementById('toggleBarView');
+                if (toggleButton) {
+                    let isBarView = true;
+                    toggleButton.addEventListener('click', function() {
+                        isBarView = !isBarView;
+                        componentChart.config.type = isBarView ? 'bar' : 'line';
+                        toggleButton.textContent = isBarView ? 'Vue Linéaire' : 'Vue Barres';
+                        componentChart.update();
+                    });
+                }
+            }
+        });
+        /*]]>*/
+    </script>
+</body>
+</html>
