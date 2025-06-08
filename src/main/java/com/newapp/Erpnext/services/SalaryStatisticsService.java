@@ -11,9 +11,14 @@ import jakarta.servlet.http.HttpSession;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import java.util.*;
+import java.time.YearMonth;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class SalaryStatisticsService {
+
+    private static final Logger logger = LoggerFactory.getLogger(SalaryStatisticsService.class);
 
     @Autowired
     private RestTemplate restTemplate;
@@ -44,11 +49,18 @@ public class SalaryStatisticsService {
 
             if (sid != null) {
                 String url = erpnextApiUrl + "/resource/Salary Slip";
-                String filters = String.format("[[\"posting_date\",\"between\",[\"'%d-%02d-01'\",\"'%d-%02d-31'\"]]]",
-                        year, month, year, month);
+                
+                // Calculer le dernier jour du mois
+                YearMonth yearMonth = YearMonth.of(year, month);
+                int lastDay = yearMonth.lengthOfMonth();
+                
+                String filters = String.format("[[\"posting_date\",\"between\",[\"'%d-%02d-01'\",\"'%d-%02d-%02d'\"]]]",
+                        year, month, year, month, lastDay);
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.add("Cookie", "sid=" + sid);
+                
+                logger.info("Récupération des détails des salaires pour {}-{} avec filtre: {}", year, month, filters);
 
                 ResponseEntity<Map> response = restTemplate.exchange(
                     url + "?filters=" + filters,
@@ -59,6 +71,7 @@ public class SalaryStatisticsService {
 
                 if (response.getBody() != null && response.getBody().get("data") != null) {
                     List<Map<String, Object>> salarySlips = (List<Map<String, Object>>) response.getBody().get("data");
+                    logger.debug("Nombre de fiches de paie trouvées: {}", salarySlips.size());
                     
                     for (Map<String, Object> slip : salarySlips) {
                         String slipUrl = erpnextApiUrl + "/resource/Salary Slip/" + slip.get("name");
@@ -99,12 +112,13 @@ public class SalaryStatisticsService {
 
                             detail.setTotalSalary(totalSalary);
                             employeeDetails.add(detail);
+                            logger.debug("Ajout des détails de salaire pour l'employé {} ({})", employeeName, employeeId);
                         }
                     }
                 }
             }
         } catch (Exception e) {
-            System.err.println("Erreur lors de la récupération des détails des salaires des employés : " + e.getMessage());
+            logger.error("Erreur lors de la récupération des détails des salaires des employés pour {}-{}: {}", year, month, e.getMessage());
         }
 
         return employeeDetails;
@@ -121,11 +135,18 @@ public class SalaryStatisticsService {
 
             if (sid != null) {
                 String url = erpnextApiUrl + "/resource/Salary Slip";
-                String filters = String.format("[[\"posting_date\",\"between\",[\"'%d-%02d-01'\",\"'%d-%02d-31'\"]]]",
-                        year, month, year, month);
+                
+                // Calculer le dernier jour du mois
+                YearMonth yearMonth = YearMonth.of(year, month);
+                int lastDay = yearMonth.lengthOfMonth();
+                
+                String filters = String.format("[[\"posting_date\",\"between\",[\"'%d-%02d-01'\",\"'%d-%02d-%02d'\"]]]",
+                        year, month, year, month, lastDay);
 
                 HttpHeaders headers = new HttpHeaders();
                 headers.add("Cookie", "sid=" + sid);
+                
+                logger.info("Récupération des statistiques pour {}-{} avec filtre: {}", year, month, filters);
 
                 ResponseEntity<Map> response = restTemplate.exchange(
                     url + "?filters=" + filters,
@@ -136,6 +157,7 @@ public class SalaryStatisticsService {
 
                 if (response.getBody() != null && response.getBody().get("data") != null) {
                     List<Map<String, Object>> salarySlips = (List<Map<String, Object>>) response.getBody().get("data");
+                    logger.debug("Nombre de fiches de paie trouvées: {}", salarySlips.size());
                     
                     for (Map<String, Object> slip : salarySlips) {
                         String slipUrl = erpnextApiUrl + "/resource/Salary Slip/" + slip.get("name");
@@ -173,7 +195,7 @@ public class SalaryStatisticsService {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Erreur lors de la récupération des données de salaire : " + e.getMessage());
+            logger.error("Erreur lors de la récupération des données de salaire pour {}-{}: {}", year, month, e.getMessage());
         }
 
         stats.setTotalSalary(totalSalary);

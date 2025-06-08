@@ -17,8 +17,8 @@ public class AppConfig {
         factory.setReadTimeout(3000);
         
         return builder
-            .setConnectTimeout(Duration.ofSeconds(3))
-            .setReadTimeout(Duration.ofSeconds(3))
+            .setConnectTimeout(Duration.ofSeconds(30))
+            .setReadTimeout(Duration.ofSeconds(30))
             .build();
     }
 } 

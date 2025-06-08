@@ -153,6 +153,54 @@
                             </tbody>
                         </table>
                     </div>
+                    
+                    <!-- Pagination -->
+                    <div class="d-flex justify-content-between align-items-center mt-4" th:if="${totalPages > 0}">
+                        <div class="text-muted">
+                            Affichage de <span th:text="${(currentPage - 1) * pageSize + 1}">1</span> à 
+                            <span th:text="${currentPage == totalPages ? totalItems : currentPage * pageSize}">10</span> sur 
+                            <span th:text="${totalItems}">100</span> entrées
+                        </div>
+                        <nav aria-label="Navigation des pages">
+                            <ul class="pagination mb-0">
+                                <!-- Bouton Précédent -->
+                                <li class="page-item" th:classappend="${!hasPrevious ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/salaries(page=${currentPage - 1},
+                                            month=${selectedMonth},
+                                            employeeId=${selectedEmployee},
+                                            department=${selectedDepartment},
+                                            status=${selectedStatus})}"
+                                       aria-label="Précédent">
+                                        <span aria-hidden="true">&laquo;</span>
+                                    </a>
+                                </li>
+                                
+                                <!-- Numéros de page -->
+                                <li class="page-item" th:each="pageNum : ${#numbers.sequence(1, totalPages)}"
+                                    th:classappend="${pageNum == currentPage ? 'active' : ''}">
+                                    <a class="page-link" 
+                                       th:href="@{/salaries(page=${pageNum},
+                                               month=${selectedMonth},
+                                               employeeId=${selectedEmployee},
+                                               department=${selectedDepartment},
+                                               status=${selectedStatus})}"
+                                       th:text="${pageNum}">1</a>
+                                </li>
+                                
+                                <!-- Bouton Suivant -->
+                                <li class="page-item" th:classappend="${!hasNext ? 'disabled' : ''}">
+                                    <a class="page-link" th:href="@{/salaries(page=${currentPage + 1},
+                                            month=${selectedMonth},
+                                            employeeId=${selectedEmployee},
+                                            department=${selectedDepartment},
+                                            status=${selectedStatus})}"
+                                       aria-label="Suivant">
+                                        <span aria-hidden="true">&raquo;</span>
+                                    </a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
                 </div>
             </div>
         </div>
