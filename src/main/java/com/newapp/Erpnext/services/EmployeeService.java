@@ -9,19 +9,31 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.boot.web.client.RestTemplateBuilder;
 
+import com.lowagie.text.Chunk;
+import com.lowagie.text.Document;
+import com.lowagie.text.DocumentException;
+import com.lowagie.text.Element;
+import com.lowagie.text.Font;
+import com.lowagie.text.FontFactory;
+import com.lowagie.text.PageSize;
+import com.lowagie.text.Paragraph;
+import com.lowagie.text.Phrase;
+import com.lowagie.text.Rectangle;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
+import com.lowagie.text.pdf.PdfWriter;
+
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.stream.Collectors;
-import com.lowagie.text.*;
-import com.lowagie.text.pdf.*;
-import java.io.ByteArrayOutputStream;
 import java.text.NumberFormat;
+import java.util.*;
+import java.util.List;
+import java.util.stream.Collectors;
+
 import java.util.Locale;
 import java.awt.Color;
 
@@ -267,250 +279,167 @@ public class EmployeeService {
      * Génère un PDF avec les informations de l'employé
      */
     public byte[] generateEmployeePdf(String employeeId) {
+        ByteArrayOutputStream baos = null;
+        Document document = null;
+        PdfWriter writer = null;
+        
         try {
             // Récupérer les données de l'employé
             Employee employee = getEmployeeById(employeeId);
             if (employee == null) {
-                return null;
+                throw new IllegalArgumentException("Employé non trouvé avec l'ID: " + employeeId);
             }
             
-            // Créer un document PDF
-            Document document = new Document(PageSize.A4);
-            ByteArrayOutputStream baos = new ByteArrayOutputStream();
-            PdfWriter.getInstance(document, baos);
-            
+            // Initialiser le document PDF
+            baos = new ByteArrayOutputStream();
+            document = new Document(PageSize.A4, 36, 36, 54, 36);
+            writer = PdfWriter.getInstance(document, baos);
             document.open();
             
-            // Ajouter le titre
-            Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18, Color.BLACK);
+            // Polices personnalisées
+            Font titleFont = new Font(Font.HELVETICA, 18, Font.BOLD, new Color(0, 51, 102));
+            Font sectionFont = new Font(Font.HELVETICA, 14, Font.BOLD, new Color(0, 51, 102));
+            Font boldFont = new Font(Font.HELVETICA, 11, Font.BOLD);
+            Font normalFont = new Font(Font.HELVETICA, 11);
+            
+            // En-tête avec titre
             Paragraph title = new Paragraph("FICHE EMPLOYÉ", titleFont);
             title.setAlignment(Element.ALIGN_CENTER);
             title.setSpacingAfter(20);
             document.add(title);
             
-            // Informations principales de l'employé
-            PdfPTable infoTable = new PdfPTable(2);
-            infoTable.setWidthPercentage(100);
+            // Informations principales
+            PdfPTable mainTable = new PdfPTable(2);
+            mainTable.setWidthPercentage(100);
+            mainTable.setSpacingAfter(20);
             
-            // Photo de l'employé (si disponible)
-            // Note: Cette partie est commentée car nous n'avons pas accès aux photos
-            // Si vous avez des photos, vous pouvez décommenter et adapter ce code
-            /*
-            if (employee.getPhotoUrl() != null) {
-                try {
-                    Image photo = Image.getInstance(new URL(employee.getPhotoUrl()));
-                    photo.scaleToFit(100, 100);
-                    PdfPCell photoCell = new PdfPCell(photo);
-                    photoCell.setBorder(Rectangle.NO_BORDER);
-                    photoCell.setRowspan(4);
-                    infoTable.addCell(photoCell);
-                } catch (Exception e) {
-                    // En cas d'erreur, ajouter une cellule vide
-                    PdfPCell emptyCell = new PdfPCell();
-                    emptyCell.setBorder(Rectangle.NO_BORDER);
-                    emptyCell.setRowspan(4);
-                    infoTable.addCell(emptyCell);
-                }
-            } else {
-                PdfPCell emptyCell = new PdfPCell();
-                emptyCell.setBorder(Rectangle.NO_BORDER);
-                emptyCell.setRowspan(4);
-                infoTable.addCell(emptyCell);
-            }
-            */
-            
-            // ID et Nom
-            Font boldFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12, Color.BLACK);
-            Font normalFont = FontFactory.getFont(FontFactory.HELVETICA, 12, Color.BLACK);
-            
-            PdfPCell idCell = new PdfPCell();
-            idCell.setBorder(Rectangle.NO_BORDER);
-            Paragraph idPara = new Paragraph();
-            idPara.add(new Chunk("ID: ", boldFont));
-            idPara.add(new Chunk(employee.getId(), normalFont));
-            idCell.addElement(idPara);
-            infoTable.addCell(idCell);
-            
-            PdfPCell nameCell = new PdfPCell();
-            nameCell.setBorder(Rectangle.NO_BORDER);
-            Paragraph namePara = new Paragraph();
-            namePara.add(new Chunk("Nom: ", boldFont));
-            namePara.add(new Chunk(employee.getName(), normalFont));
-            nameCell.addElement(namePara);
-            infoTable.addCell(nameCell);
-            
-            // Département et Poste
-            PdfPCell deptCell = new PdfPCell();
-            deptCell.setBorder(Rectangle.NO_BORDER);
-            Paragraph deptPara = new Paragraph();
-            deptPara.add(new Chunk("Département: ", boldFont));
-            deptPara.add(new Chunk(employee.getDepartment() != null ? employee.getDepartment() : "-", normalFont));
-            deptCell.addElement(deptPara);
-            infoTable.addCell(deptCell);
-            
-            PdfPCell posCell = new PdfPCell();
-            posCell.setBorder(Rectangle.NO_BORDER);
-            Paragraph posPara = new Paragraph();
-            posPara.add(new Chunk("Poste: ", boldFont));
-            posPara.add(new Chunk(employee.getPosition() != null ? employee.getPosition() : "-", normalFont));
-            posCell.addElement(posPara);
-            infoTable.addCell(posCell);
-            
-            document.add(infoTable);
-            document.add(new Paragraph(" "));
-            
-            // Informations de contact
-            Font sectionFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 14, Color.BLACK);
-            Paragraph contactTitle = new Paragraph("Informations de contact", sectionFont);
-            contactTitle.setSpacingAfter(10);
-            document.add(contactTitle);
-            
-            PdfPTable contactTable = new PdfPTable(2);
-            contactTable.setWidthPercentage(100);
-            
-            // Email
-            PdfPCell emailCell = new PdfPCell();
-            emailCell.setBorder(Rectangle.NO_BORDER);
-            Paragraph emailPara = new Paragraph();
-            emailPara.add(new Chunk("Email: ", boldFont));
-            emailPara.add(new Chunk(employee.getEmail() != null ? employee.getEmail() : "-", normalFont));
-            emailCell.addElement(emailPara);
-            contactTable.addCell(emailCell);
-            
-            // Téléphone
-            PdfPCell phoneCell = new PdfPCell();
-            phoneCell.setBorder(Rectangle.NO_BORDER);
-            Paragraph phonePara = new Paragraph();
-            phonePara.add(new Chunk("Téléphone: ", boldFont));
-            phonePara.add(new Chunk(employee.getPhone() != null ? employee.getPhone() : "-", normalFont));
-            phoneCell.addElement(phonePara);
-            contactTable.addCell(phoneCell);
-            
-            // Adresse
-            PdfPCell addressCell = new PdfPCell();
-            addressCell.setBorder(Rectangle.NO_BORDER);
-            addressCell.setColspan(2);
-            Paragraph addressPara = new Paragraph();
-            addressPara.add(new Chunk("Adresse: ", boldFont));
-            addressPara.add(new Chunk(employee.getAddress() != null ? employee.getAddress() : "-", normalFont));
-            addressCell.addElement(addressPara);
-            contactTable.addCell(addressCell);
-            
-            document.add(contactTable);
-            document.add(new Paragraph(" "));
+            // Informations personnelles
+            addSection(document, "Informations Personnelles", sectionFont);
+            addInfoTable(mainTable, new String[][] {
+                {"ID", employee.getId()},
+                {"Nom", employee.getName()},
+                {"Email", employee.getEmail()},
+                {"Téléphone", employee.getPhone()},
+                {"Adresse", employee.getAddress()}
+            }, boldFont, normalFont);
+            document.add(mainTable);
             
             // Informations professionnelles
-            Paragraph proTitle = new Paragraph("Informations professionnelles", sectionFont);
-            proTitle.setSpacingAfter(10);
-            document.add(proTitle);
-            
+            addSection(document, "Informations Professionnelles", sectionFont);
             PdfPTable proTable = new PdfPTable(2);
             proTable.setWidthPercentage(100);
+            proTable.setSpacingAfter(20);
             
-            // Statut
-            PdfPCell statusCell = new PdfPCell();
-            statusCell.setBorder(Rectangle.NO_BORDER);
-            Paragraph statusPara = new Paragraph();
-            statusPara.add(new Chunk("Statut: ", boldFont));
-            statusPara.add(new Chunk(employee.getStatus() != null ? employee.getStatus() : "-", normalFont));
-            statusCell.addElement(statusPara);
-            proTable.addCell(statusCell);
-            
-            // Type de contrat
-            PdfPCell contractCell = new PdfPCell();
-            contractCell.setBorder(Rectangle.NO_BORDER);
-            Paragraph contractPara = new Paragraph();
-            contractPara.add(new Chunk("Type de contrat: ", boldFont));
-            contractPara.add(new Chunk(employee.getContractType() != null ? employee.getContractType() : "-", normalFont));
-            contractCell.addElement(contractPara);
-            proTable.addCell(contractCell);
-            
-            // Date d'embauche
-            PdfPCell hireDateCell = new PdfPCell();
-            hireDateCell.setBorder(Rectangle.NO_BORDER);
-            hireDateCell.setColspan(2);
-            Paragraph hireDatePara = new Paragraph();
-            hireDatePara.add(new Chunk("Date d'embauche: ", boldFont));
-            if (employee.getHireDate() != null) {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                hireDatePara.add(new Chunk(employee.getHireDate().format(formatter), normalFont));
-            } else {
-                hireDatePara.add(new Chunk("-", normalFont));
-            }
-            hireDateCell.addElement(hireDatePara);
-            proTable.addCell(hireDateCell);
-            
+            addInfoTable(proTable, new String[][] {
+                {"Département", employee.getDepartment()},
+                {"Poste", employee.getPosition()},
+                {"Statut", employee.getStatus()},
+                {"Type de contrat", employee.getContractType()},
+                {"Date d'embauche", employee.getHireDate() != null ? 
+                    employee.getHireDate().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")) : "-"}
+            }, boldFont, normalFont);
             document.add(proTable);
-            document.add(new Paragraph(" "));
             
             // Historique des salaires
             if (employee.getSalaries() != null && !employee.getSalaries().isEmpty()) {
-                Paragraph salaryTitle = new Paragraph("Historique des salaires", sectionFont);
-                salaryTitle.setSpacingAfter(10);
-                document.add(salaryTitle);
-                
-                PdfPTable salaryTable = new PdfPTable(5);
-                salaryTable.setWidthPercentage(100);
-                
-                // En-têtes du tableau
-                Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 10, Color.WHITE);
-                
-                PdfPCell headerCell1 = new PdfPCell(new Phrase("Mois", headerFont));
-                headerCell1.setBackgroundColor(Color.DARK_GRAY);
-                headerCell1.setPadding(5);
-                salaryTable.addCell(headerCell1);
-                
-                PdfPCell headerCell2 = new PdfPCell(new Phrase("Date de paiement", headerFont));
-                headerCell2.setBackgroundColor(Color.DARK_GRAY);
-                headerCell2.setPadding(5);
-                salaryTable.addCell(headerCell2);
-                
-                PdfPCell headerCell3 = new PdfPCell(new Phrase("Montant brut", headerFont));
-                headerCell3.setBackgroundColor(Color.DARK_GRAY);
-                headerCell3.setPadding(5);
-                salaryTable.addCell(headerCell3);
-                
-                PdfPCell headerCell4 = new PdfPCell(new Phrase("Montant net", headerFont));
-                headerCell4.setBackgroundColor(Color.DARK_GRAY);
-                headerCell4.setPadding(5);
-                salaryTable.addCell(headerCell4);
-                
-                PdfPCell headerCell5 = new PdfPCell(new Phrase("Taxes", headerFont));
-                headerCell5.setBackgroundColor(Color.DARK_GRAY);
-                headerCell5.setPadding(5);
-                salaryTable.addCell(headerCell5);
-                
-                // Formatter pour les montants
-                NumberFormat currencyFormatter = NumberFormat.getCurrencyInstance(Locale.FRANCE);
-                DateTimeFormatter dateFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-                
-                // Données du tableau
-                for (Salary salary : employee.getSalaries()) {
-                    salaryTable.addCell(new Phrase(salary.getMonth() != null ? salary.getMonth() : "-"));
-                    salaryTable.addCell(new Phrase(salary.getPaymentDate() != null ? salary.getPaymentDate().format(dateFormatter) : "-"));
-                    salaryTable.addCell(new Phrase(salary.getGrossAmount() != null ? currencyFormatter.format(salary.getGrossAmount()) : "-"));
-                    salaryTable.addCell(new Phrase(salary.getNetAmount() != null ? currencyFormatter.format(salary.getNetAmount()) : "-"));
-                    salaryTable.addCell(new Phrase(salary.getTaxAmount() != null ? currencyFormatter.format(salary.getTaxAmount()) : "-"));
-                }
-                
+                addSection(document, "Historique des Salaires", sectionFont);
+                PdfPTable salaryTable = createSalaryTable(employee.getSalaries(), boldFont, normalFont);
                 document.add(salaryTable);
             }
             
             // Pied de page
-            document.add(new Paragraph(" "));
-            document.add(new Paragraph(" "));
-            Paragraph footer = new Paragraph("Document généré le " + LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy")));
-            footer.setAlignment(Element.ALIGN_CENTER);
-            document.add(footer);
+            addFooter(document, normalFont);
             
             document.close();
+            writer.close();
             
             return baos.toByteArray();
+            
         } catch (Exception e) {
             System.err.println("Erreur lors de la génération du PDF: " + e.getMessage());
             e.printStackTrace();
             return null;
+        } finally {
+            if (document != null && document.isOpen()) {
+                document.close();
+            }
+            if (writer != null) {
+                writer.close();
+            }
+            if (baos != null) {
+                try {
+                    baos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
+    }
+    
+    private void addSection(Document document, String title, Font font) throws DocumentException {
+        Paragraph section = new Paragraph(title, font);
+        section.setSpacingBefore(15);
+        section.setSpacingAfter(10);
+        document.add(section);
+    }
+    
+    private void addInfoTable(PdfPTable table, String[][] data, Font boldFont, Font normalFont) {
+        for (String[] row : data) {
+            PdfPCell labelCell = new PdfPCell(new Phrase(row[0] + ": ", boldFont));
+            labelCell.setBorder(Rectangle.NO_BORDER);
+            labelCell.setPadding(5);
+            table.addCell(labelCell);
+            
+            PdfPCell valueCell = new PdfPCell(new Phrase(row[1] != null ? row[1] : "-", normalFont));
+            valueCell.setBorder(Rectangle.NO_BORDER);
+            valueCell.setPadding(5);
+            table.addCell(valueCell);
+        }
+    }
+    
+    private PdfPTable createSalaryTable(List<Salary> salaries, Font boldFont, Font normalFont) throws DocumentException {
+        PdfPTable table = new PdfPTable(5);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(10);
+        
+        // En-têtes
+        String[] headers = {"Mois", "Date de paiement", "Montant brut", "Montant net", "Impôts"};
+        Color headerColor = new Color(0, 51, 102);
+        Font headerFont = new Font(Font.HELVETICA, 11, Font.BOLD, Color.WHITE);
+        
+        for (String header : headers) {
+            PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
+            cell.setBackgroundColor(headerColor);
+            cell.setPadding(5);
+            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+            table.addCell(cell);
+        }
+        
+        // Données
+        NumberFormat currencyFormat = NumberFormat.getCurrencyInstance(Locale.FRANCE);
+        DateTimeFormatter dateFormat = DateTimeFormatter.ofPattern("dd/MM/yyyy");
+        
+        for (Salary salary : salaries) {
+            table.addCell(new Phrase(salary.getMonth(), normalFont));
+            table.addCell(new Phrase(salary.getPaymentDate() != null ? 
+                salary.getPaymentDate().format(dateFormat) : "-", normalFont));
+            table.addCell(new Phrase(salary.getGrossAmount() != null ? 
+                currencyFormat.format(salary.getGrossAmount()) : "-", normalFont));
+            table.addCell(new Phrase(salary.getNetAmount() != null ? 
+                currencyFormat.format(salary.getNetAmount()) : "-", normalFont));
+            table.addCell(new Phrase(salary.getTaxAmount() != null ? 
+                currencyFormat.format(salary.getTaxAmount()) : "-", normalFont));
+        }
+        
+        return table;
+    }
+    
+    private void addFooter(Document document, Font font) throws DocumentException {
+        Paragraph footer = new Paragraph();
+        footer.add(new Chunk("\n\nDocument généré le " + 
+            LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm")), font));
+        footer.setAlignment(Element.ALIGN_CENTER);
+        document.add(footer);
     }
 
     public byte[] generateSalaryPayslipPdf(Map<String, Object> salaryData) {
