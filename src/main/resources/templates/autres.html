@@ -1,0 +1,71 @@
+```html
+<!DOCTYPE html>
+<html lang="fr" xmlns:th="http://www.thymeleaf.org" xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout" layout:decorate="~{layout/main}">
+<head>
+    <title>Générer un Bulletin de Paie - ERPNext Spring</title>
+</head>
+<body>
+    <div layout:fragment="content">
+        <div class="container-fluid">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="mb-0">Générer un Bulletin de Paie</h2>
+            </div>
+            
+            <!-- Carte pour le formulaire -->
+            <div class="card bg-dark text-white">
+                <div class="card-body">
+                    <!-- Messages d'erreur ou de succès -->
+                    <div th:if="${error}" class="alert alert-danger" role="alert">
+                        <span th:text="${error}"></span>
+                    </div>
+                    <div th:if="${success}" class="alert alert-success" role="alert">
+                        <span th:text="${success}"></span>
+                    </div>
+
+                    <!-- Formulaire -->
+                    <form id="entryForm" th:action="@{/payroll/generate}" method="post" class="needs-validation" novalidate>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                <label for="employeeId" class="form-label">Employé</label>
+                                <select class="form-select bg-dark text-white" id="employeeId" name="employeeId" required>
+                                    <option value="">Sélectionner un employé</option>
+                                    <option th:each="employee : ${employees}" 
+                                            th:value="${employee.id}" 
+                                            th:text="${employee.name}"
+                                            th:selected="${employee.id == employeeId}">
+                                    </option>
+                                </select>
+                                <div class="invalid-feedback">
+                                    Veuillez sélectionner un employé.
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="startDate" class="form-label">Date de début</label>
+                                <input type="date" class="form-control bg-dark text-white" id="startDate" name="startDate" 
+                                       th:value="${startDate}" required>
+                                <div class="invalid-feedback">
+                                    Veuillez entrer une date de début valide.
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <label for="endDate" class="form-label">Date de fin</label>
+                                <input type="date" class="form-control bg-dark text-white" id="endDate" name="endDate" 
+                                       th:value="${endDate}" required>
+                                <div class="invalid-feedback">
+                                    Veuillez entrer une date de fin valide.
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-end gap-2">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-check-lg"></i> Generer
+                            </button>
+                            <a th:href="@{/employees}" class="btn btn-secondary">Annuler</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

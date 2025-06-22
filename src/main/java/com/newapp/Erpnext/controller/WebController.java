@@ -52,4 +52,6 @@ public class WebController {
         }
         return "dashboard";  // Retourne directement la vue "dashboard", pas de redirection
     }
+
+    
 }

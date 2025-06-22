@@ -1,351 +1,543 @@
-// package com.newapp.Erpnext.services;
+package com.newapp.Erpnext.services;
 
-// import com.fasterxml.jackson.databind.ObjectMapper;
-// import com.newapp.Erpnext.models.Salary;
-// import com.newapp.Erpnext.models.Employee;
-// import com.newapp.Erpnext.models.SalaryComponent;
-// import jakarta.servlet.http.HttpSession;
-// import org.slf4j.Logger;
-// import org.slf4j.LoggerFactory;
-// import org.springframework.beans.factory.annotation.Autowired;
-// import org.springframework.beans.factory.annotation.Value;
-// import org.springframework.http.*;
-// import org.springframework.stereotype.Service;
-// import org.springframework.web.client.RestTemplate;
-// import com.itextpdf.kernel.pdf.PdfDocument;
-// import com.itextpdf.kernel.pdf.PdfWriter;
-// import com.itextpdf.layout.Document;
-// import com.itextpdf.layout.element.Paragraph;
-// import com.itextpdf.layout.element.Table;
-// import com.itextpdf.layout.properties.TextAlignment;
-// import com.itextpdf.layout.properties.UnitValue;
-// import com.itextpdf.kernel.colors.DeviceRgb;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
-// import java.io.ByteArrayOutputStream;
-// import java.math.BigDecimal;
-// import java.time.LocalDate;
-// import java.time.format.DateTimeFormatter;
-// import java.util.*;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
-// @Service
-// public class PayrollService {
-//     private static final Logger logger = LoggerFactory.getLogger(PayrollService.class);
-//     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter.ofPattern("dd/MM/yyyy");
-//     private static final DateTimeFormatter MONTH_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM");
+import com.newapp.Erpnext.models.SalarySlip;
 
-//     @Value("${erpnext.base.url:http://erpnext.localhost:8000/api}")
-//     private String baseUrl;
+import jakarta.servlet.http.HttpSession;
 
-//     @Autowired
-//     private RestTemplate restTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
-//     @Autowired
-//     private ObjectMapper objectMapper;
+@Service
+public class PayrollService {
 
-//     @Autowired
-//     private SessionService sessionService;
+    private static final Logger logger = LoggerFactory.getLogger(PayrollService.class);
 
-//     public Map<String, Object> getSalarySlipDetails(String salarySlipId, HttpSession session) throws Exception {
-//         if (!sessionService.isAuthenticated()) {
-//             throw new IllegalStateException("Invalid session");
-//         }
+    @Autowired
+    private RestTemplate restTemplate;
 
-//         String url = baseUrl + "/resource/Salary Slip/" + salarySlipId;
-//         HttpHeaders headers = createHeaders(session);
-//         HttpEntity<?> request = new HttpEntity<>(headers);
+    @Autowired
+    private SessionService sessionService;
 
-//         try {
-//             ResponseEntity<Map> response = restTemplate.exchange(
-//                 url,
-//                 HttpMethod.GET,
-//                 request,
-//                 Map.class
-//             );
+    @Value("${erpnext.api.url:http://erpnext.localhost:8000/api/resource/Salary Slip}")
+    private String erpnextApiUrl;
 
-//             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-//                 logger.error("Failed to fetch salary slip {}: {}", salarySlipId, response.getStatusCode());
-//                 throw new Exception("Unable to fetch salary slip details");
-//             }
+    @Value("${erpnext.base.url:http://erpnext.localhost:8000}")
+    private String erpnextBaseUrl;
 
-//             Map<String, Object> data = (Map<String, Object>) response.getBody().get("data");
-//             Map<String, Object> result = new HashMap<>();
-//             result.put("salary", mapToSalary(data));
-//             result.put("components", parseSalaryComponents(data));
-//             return result;
-//         } catch (Exception e) {
-//             logger.error("Error fetching salary slip {}: {}", salarySlipId, e.getMessage());
-//             throw new Exception("Error fetching salary slip: " + e.getMessage(), e);
-//         }
-//     }
+    /**
+     * Génère les salary slips pour un employé entre deux dates
+     * @param employeeId ID de l'employé
+     * @param startDate Date de début (format YYYY-MM-DD)
+     * @param endDate Date de fin (format YYYY-MM-DD)
+     * @param baseSalary Salaire de base (peut être null ou 0)
+     * @return Message de résultat
+     */
 
-//     public List<Salary> getSalarySlipsForMonth(String month, String employeeId, HttpSession session) throws Exception {
-//         if (!sessionService.isAuthenticated()) {
-//             throw new IllegalStateException("Session invalide");
-//         }
+public String generateSalarySlips(String employeeId, String startDate, String endDate, Double baseSalary) {
+    try {
+        // Parse dates
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
 
-//         StringBuilder filters = new StringBuilder("[");
-//         if (month != null && !month.isEmpty()) {
-//             filters.append("[\"month\", \"=\", \"").append(month).append("\"]");
-//         }
-//         if (employeeId != null && !employeeId.isEmpty()) {
-//             if (filters.length() > 1) {
-//                 filters.append(",");
-//             }
-//             filters.append("[\"employee\", \"=\", \"").append(employeeId).append("\"]");
-//         }
-//         filters.append("]");
+        // Validate dates
+        if (start.isAfter(end)) {
+            return "Error: startDate must be before or equal to endDate";
+        }
 
-//         String url = baseUrl + "/resource/Salary Slip?filters=" + filters + 
-//                     "&fields=[\"name\", \"employee\", \"employee_name\", \"posting_date\", \"month\", " +
-//                     "\"gross_pay\", \"net_pay\", \"tax_amount\", \"status\"]";
+        // Déterminer le salaire de base à utiliser
+        Double salaryToUse = determineSalaryToUse(employeeId, start, baseSalary);
+        if (salaryToUse == null) {
+            return "Error: No base salary provided and no previous salary slip found before " + startDate;
+        }
 
-//         HttpHeaders headers = createHeaders(session);
-//         HttpEntity<?> request = new HttpEntity<>(headers);
+        // Récupérer la Salary Structure Assignment si nécessaire
+        Map<String, Object> salaryStructureAssignment = null;
+        if (baseSalary == null || baseSalary == 0.0) {
+            salaryStructureAssignment = getLastSalaryStructureAssignment(employeeId, start.minusDays(1).toString());
+            if (salaryStructureAssignment == null) {
+                logger.warn("No Salary Structure Assignment found for employee {} before {}", employeeId, startDate);
+            }
+        }
 
-//         try {
-//             ResponseEntity<Map> response = restTemplate.exchange(
-//                 url,
-//                 HttpMethod.GET,
-//                 request,
-//                 Map.class
-//             );
+        // Initialiser la génération par mois - CORRECTION ICI
+        YearMonth currentMonth = YearMonth.from(start);
+        YearMonth endMonth = YearMonth.from(end);
+        int createdSlips = 0;
+        int skippedSlips = 0;
 
-//             if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-//                 logger.error("Échec de la récupération des fiches de paie pour le mois {}: {}", month, response.getStatusCode());
-//                 throw new Exception("Impossible de récupérer les fiches de paie");
-//             }
-
-//             List<Map<String, Object>> dataList = (List<Map<String, Object>>) response.getBody().get("data");
-//             List<Salary> salaries = new ArrayList<>();
+        // Générer les salary slips mois par mois
+        while (!currentMonth.isAfter(endMonth)) {
+            // CORRECTION: Calculer les dates de début et fin pour chaque mois
+            LocalDate monthStartDate = currentMonth.atDay(1);
+            LocalDate monthEndDate = currentMonth.atEndOfMonth();
             
-//             if (dataList != null) {
-//                 for (Map<String, Object> data : dataList) {
-//                     salaries.add(mapToSalary(data));
-//                 }
-//             }
-
-//             logger.info("Récupération de {} fiches de paie pour le mois {}", salaries.size(), month);
-//             return salaries;
-
-//         } catch (Exception e) {
-//             logger.error("Erreur lors de la récupération des fiches de paie pour le mois {}: {}", month, e.getMessage());
-//             throw new Exception("Erreur lors de la récupération des fiches de paie: " + e.getMessage(), e);
-//         }
-//     }
-
-//     public byte[] generateSalarySlipPdf(Salary salary, Employee employee, Map<String, Object> salaryDetails) throws Exception {
-//         try (ByteArrayOutputStream baos = new ByteArrayOutputStream()) {
-//             PdfWriter writer = new PdfWriter(baos);
-//             PdfDocument pdf = new PdfDocument(writer);
-//             Document document = new Document(pdf);
-
-//             // En-tête du document
-//             Table header = new Table(UnitValue.createPercentArray(new float[]{1, 1}));
-//             header.setWidth(UnitValue.createPercentValue(100));
+            // Ajuster les dates selon la période demandée
+            if (monthStartDate.isBefore(start)) {
+                monthStartDate = start;
+            }
+            if (monthEndDate.isAfter(end)) {
+                monthEndDate = end;
+            }
             
-//             // Logo et informations de l'entreprise (colonne gauche)
-//             Table companyInfo = new Table(1);
-//             companyInfo.addCell(new Paragraph(employee.getCompany())
-//                 .setFontSize(16)
-//                 .setBold());
-//             companyInfo.addCell(new Paragraph("SIRET: " + "12345678900000")
-//                 .setFontSize(10));
-//             companyInfo.addCell(new Paragraph("Adresse: 123 Rue Example")
-//                 .setFontSize(10));
-//             header.addCell(companyInfo);
+            String monthStart = monthStartDate.toString();
+            String monthEnd = monthEndDate.toString();
 
-//             // Titre et période (colonne droite)
-//             Table titleInfo = new Table(1);
-//             titleInfo.addCell(new Paragraph("BULLETIN DE PAIE")
-//                 .setFontSize(20)
-//                 .setBold()
-//                 .setTextAlignment(TextAlignment.RIGHT));
-//             titleInfo.addCell(new Paragraph("Période: " + salary.getMonth())
-//                 .setFontSize(12)
-//                 .setTextAlignment(TextAlignment.RIGHT));
-//             header.addCell(titleInfo);
+            // Vérifier si un salary slip existe déjà pour ce mois
+            boolean slipExists = checkSalary(employeeId, monthStart, monthEnd);
+            if (!slipExists) {
+                // Créer un nouveau salary slip pour ce mois spécifique
+                String result = createSalarySlipWithBaseSalary(employeeId, monthStart, monthEnd, salaryToUse, salaryStructureAssignment);
+                if (result.startsWith("Error")) {
+                    return result;
+                }
+                createdSlips++;
+                logger.info("Created salary slip for employee {} for period {} to {}", employeeId, monthStart, monthEnd);
+            } else {
+                skippedSlips++;
+                logger.info("Salary slip already exists for employee {} for period {} to {}", employeeId, monthStart, monthEnd);
+            }
             
-//             document.add(header);
-//             document.add(new Paragraph("\n"));
+            
+            currentMonth = currentMonth.plusMonths(1); // Passer au mois suivant
+        }
 
-//             // Informations employé
-//             Table employeeInfo = new Table(UnitValue.createPercentArray(new float[]{1, 1, 1, 1}));
-//             employeeInfo.setWidth(UnitValue.createPercentValue(100));
-//             employeeInfo.addCell(createInfoCell("Nom", employee.getName()));
-//             employeeInfo.addCell(createInfoCell("Matricule", employee.getId()));
-//             employeeInfo.addCell(createInfoCell("Département", employee.getDepartment()));
-//             employeeInfo.addCell(createInfoCell("Date de paiement", 
-//                 salary.getPaymentDate() != null ? salary.getPaymentDate().format(DATE_FORMATTER) : "N/A"));
-//             document.add(employeeInfo);
-//             document.add(new Paragraph("\n"));
+        return String.format("Successfully created %d salary slip(s). Skipped %d existing slip(s).",
+                            createdSlips, skippedSlips);
+    } catch (Exception e) {
+        logger.error("Error generating salary slips: {}", e.getMessage());
+        return "Error generating salary slips: " + e.getMessage();
+    }
+}
 
-//             // Tableau des composants de salaire
-//             Table salaryTable = new Table(UnitValue.createPercentArray(new float[]{4, 2, 2}));
-//             salaryTable.setWidth(UnitValue.createPercentValue(100));
+    /**
+     * Détermine le salaire de base à utiliser selon la logique métier
+     */
+    private Double determineSalaryToUse(String employeeId, LocalDate startDate, Double baseSalary) {
+        // Si un salaire de base est fourni et différent de 0, l'utiliser
+        if (baseSalary != null && baseSalary > 0) {
+            return baseSalary;
+        }
 
-//             // En-têtes du tableau
-//             salaryTable.addHeaderCell(createHeaderCell("Rubrique"));
-//             salaryTable.addHeaderCell(createHeaderCell("Base"));
-//             salaryTable.addHeaderCell(createHeaderCell("Montant"));
+        // Sinon, chercher le dernier salary slip avant la date de début
+        SalarySlip lastSalarySlip = getLastSalarySlip(employeeId, startDate.minusDays(1).toString());
+        if (lastSalarySlip != null && (Double)lastSalarySlip.getGrossPay() != null) {
+            return lastSalarySlip.getGrossPay();
+        }
 
-//             // Gains
-//             BigDecimal totalEarnings = BigDecimal.ZERO;
-//             @SuppressWarnings("unchecked")
-//             List<SalaryComponent> components = (List<SalaryComponent>) salaryDetails.get("components");
-//             if (components != null) {
-//                 salaryTable.addCell(createSectionCell("GAINS"));
-//                 salaryTable.addCell(createSectionCell(""));
-//                 salaryTable.addCell(createSectionCell(""));
+        return null; // Aucun salaire trouvé
+    }
 
-//                 for (SalaryComponent component : components) {
-//                     if ("Earning".equalsIgnoreCase(component.getType())) {
-//                         BigDecimal amount = calculateComponentAmount(component);
-//                         salaryTable.addCell(new Paragraph(component.getSalary_component()));
-//                         salaryTable.addCell(new Paragraph(salary.getGrossAmount().toString()));
-//                         salaryTable.addCell(new Paragraph(amount.toString() + " €"));
-//                         totalEarnings = totalEarnings.add(amount);
-//                     }
-//                 }
-//             }
+    /**
+     * Récupère le dernier Salary Structure Assignment avant une date donnée
+     */
+    private Map<String, Object> getLastSalaryStructureAssignment(String employeeId, String beforeDate) {
+        HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
+        String sid = sessionService.ensureImportSessionValid(session);
 
-//             // Retenues
-//             BigDecimal totalDeductions = BigDecimal.ZERO;
-//             if (components != null) {
-//                 salaryTable.addCell(createSectionCell("RETENUES"));
-//                 salaryTable.addCell(createSectionCell(""));
-//                 salaryTable.addCell(createSectionCell(""));
+        if (sid != null) {
+            HttpHeaders headers = createHeaders(sid);
+            
+            String url = erpnextBaseUrl + "/api/resource/Salary Structure Assignment" +
+                        "?filters=[[\"employee\",\"=\",\"" + employeeId + "\"],[\"from_date\",\"<\",\"" + beforeDate + "\"]]" +
+                        "&order_by=from_date desc&limit_page_length=1";
+            
+            try {
+                ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+                );
 
-//                 for (SalaryComponent component : components) {
-//                     if ("Deduction".equalsIgnoreCase(component.getType())) {
-//                         BigDecimal amount = calculateComponentAmount(component);
-//                         salaryTable.addCell(new Paragraph(component.getSalary_component()));
-//                         salaryTable.addCell(new Paragraph(salary.getGrossAmount().toString()));
-//                         salaryTable.addCell(new Paragraph(amount.toString() + " €"));
-//                         totalDeductions = totalDeductions.add(amount);
-//                     }
-//                 }
-//             }
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    Object data = response.getBody().get("data");
+                    List<Map<String, Object>> assignments = safeCastToList(data);
+                    
+                    if (!assignments.isEmpty()) {
+                        return assignments.get(0);
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("Error fetching last salary structure assignment for employee {}: {}", employeeId, e.getMessage());
+            }
+        }
+        return null;
+    }
 
-//             // Totaux
-//             salaryTable.addCell(createTotalCell("TOTAL BRUT"));
-//             salaryTable.addCell(createTotalCell(""));
-//             salaryTable.addCell(createTotalCell(totalEarnings.toString() + " €"));
+    /**
+     * Récupère la liste des employés actifs
+     */
+    public List<Map<String, Object>> getActiveEmployees() {
+        HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
+        String sid = sessionService.ensureImportSessionValid(session);
 
-//             salaryTable.addCell(createTotalCell("TOTAL RETENUES"));
-//             salaryTable.addCell(createTotalCell(""));
-//             salaryTable.addCell(createTotalCell(totalDeductions.toString() + " €"));
+        if (sid != null) {
+            HttpHeaders headers = createHeaders(sid);
+            String url = erpnextBaseUrl + "/api/resource/Employee" +
+                        "?fields=[\"name\",\"employee_name\",\"designation\"]" +
+                        "&filters=[[\"status\",\"=\",\"Active\"]]" +
+                        "&order_by=employee_name asc";
 
-//             salaryTable.addCell(createTotalCell("NET A PAYER"));
-//             salaryTable.addCell(createTotalCell(""));
-//             salaryTable.addCell(createTotalCell(salary.getNetAmount().toString() + " €"));
+            try {
+                ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+                );
 
-//             document.add(salaryTable);
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    Object data = response.getBody().get("data");
+                    return safeCastToList(data);
+                }
+            } catch (Exception e) {
+                logger.error("Error fetching active employees: {}", e.getMessage());
+            }
+        }
+        return Collections.emptyList();
+    }
 
-//             // Pied de page
-//             document.add(new Paragraph("\n"));
-//             document.add(new Paragraph("Net imposable: " + salary.getNetAmount().subtract(salary.getTaxAmount()).toString() + " €")
-//                 .setFontSize(10));
-//             document.add(new Paragraph("Généré le " + LocalDate.now().format(DATE_FORMATTER))
-//                 .setFontSize(8)
-//                 .setTextAlignment(TextAlignment.RIGHT));
+    private SalarySlip getLastSalarySlip(String employeeId, String beforeDate) {
+        HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
+        String sid = sessionService.ensureImportSessionValid(session);
 
-//             document.close();
-//             return baos.toByteArray();
-//         } catch (Exception e) {
-//             logger.error("Erreur lors de la génération du PDF pour le bulletin {}: {}", salary.getId(), e.getMessage());
-//             throw new Exception("Erreur lors de la génération du PDF: " + e.getMessage(), e);
-//         }
-//     }
+        if (sid != null) {
+            HttpHeaders headers = createHeaders(sid);
+            
+            String url = erpnextApiUrl + "?filters=[[\"employee\",\"=\",\"" + employeeId + "\"],[\"posting_date\",\"<\",\"" + beforeDate + "\"]]"
+                       + "&order_by=posting_date desc&limit_page_length=1";
+            
+            try {
+                ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+                );
 
-//     private Salary mapToSalary(Map<String, Object> data) {
-//         Salary salary = new Salary();
-//         salary.setId((String) data.get("name"));
-//         salary.setEmployeeId((String) data.get("employee"));
-//         salary.setMonth((String) data.get("month"));
-//         salary.setPaymentDate(data.get("posting_date") != null ? 
-//             LocalDate.parse((String) data.get("posting_date")) : null);
-//         salary.setGrossAmount(new BigDecimal(data.get("gross_pay").toString()));
-//         salary.setNetAmount(new BigDecimal(data.get("net_pay").toString()));
-//         salary.setTaxAmount(data.get("tax_amount") != null ? 
-//             new BigDecimal(data.get("tax_amount").toString()) : BigDecimal.ZERO);
-//         salary.setStatus((String) data.get("status"));
-//         return salary;
-//     }
+                if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                    Object data = response.getBody().get("data");
+                    List<Map<String, Object>> salarySlips = safeCastToList(data);
+                    
+                    if (!salarySlips.isEmpty()) {
+                        return convertToSalarySlip(salarySlips.get(0));
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("Error fetching last salary slip for employee {}: {}", employeeId, e.getMessage());
+            }
+        }
+        return null;
+    }
 
-//     private List<SalaryComponent> parseSalaryComponents(Map<String, Object> data) {
-//         List<SalaryComponent> components = new ArrayList<>();
+public boolean checkSalary(String employeeId, String startDate, String endDate) {
+    HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
+    String sid = sessionService.ensureImportSessionValid(session);
 
-//         // Parse earnings
-//         @SuppressWarnings("unchecked")
-//         List<Map<String, Object>> earnings = (List<Map<String, Object>>) data.get("earnings");
-//         if (earnings != null) {
-//             for (Map<String, Object> earning : earnings) {
-//                 SalaryComponent comp = new SalaryComponent();
-//                 comp.setSalary_component((String) earning.get("salary_component"));
-//                 comp.setSalary_component_abbr((String) earning.get("salary_component_abbr"));
-//                 comp.setType("Earning");
-//                 comp.setFormula((String) earning.get("formula"));
-//                 components.add(comp);
-//             }
-//         }
+    if (sid == null) {
+        logger.error("Invalid session for employee {}, cannot check salary slips for period {}-{}", 
+                     employeeId, startDate, endDate);
+        return false;
+    }
 
-//         // Parse deductions
-//         @SuppressWarnings("unchecked")
-//         List<Map<String, Object>> deductions = (List<Map<String, Object>>) data.get("deductions");
-//         if (deductions != null) {
-//             for (Map<String, Object> ded : deductions) {
-//                 SalaryComponent comp = new SalaryComponent();
-//                 comp.setSalary_component((String) ded.get("salary_component"));
-//                 comp.setSalary_component_abbr((String) ded.get("salary_component_abbr"));
-//                 comp.setType("Deduction");
-//                 comp.setFormula((String) ded.get("formula"));
-//                 components.add(comp);
-//             }
-//         }
+    HttpHeaders headers = createHeaders(sid);
+    
+    // CORRECTION: Utiliser des filtres de chevauchement au lieu d'égalité exacte
+    // Chercher les salary slips qui chevauchent avec la période donnée
+    String url = erpnextApiUrl + "?fields=[\"name\",\"start_date\",\"end_date\"]&filters=[[\"employee\",\"=\",\"" + employeeId + "\"]," +
+               "[\"start_date\",\"<=\",\"" + endDate + "\"],[\"end_date\",\">=\",\"" + startDate + "\"]]" +
+               "&limit_page_length=10";
 
-//         return components;
-//     }
+    try {
+        logger.info("Checking salary slips for employee {} for period {}-{} with URL: {}", 
+                    employeeId, startDate, endDate, url);
+        ResponseEntity<Map> response = restTemplate.exchange(
+            url,
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            Map.class
+        );
 
-//     private HttpHeaders createHeaders(HttpSession session) {
-//         HttpHeaders headers = new HttpHeaders();
-//         headers.setContentType(MediaType.APPLICATION_JSON);
-//         String sid = (String) session.getAttribute("importSid");
-//         if (sid == null || sid.trim().isEmpty()) {
-//             throw new IllegalStateException("Invalid session: sid missing");
-//         }
-//         headers.add("Cookie", "sid=" + sid);
-//         return headers;
-//     }
+        if (response.getBody() != null) {
+            Object data = response.getBody().get("data");
+            List<?> salarySlips = safeCastToList(data);
+            
+            if (!salarySlips.isEmpty()) {
+                // Log des salary slips trouvés pour debugging
+                logger.info("Found {} overlapping salary slips for employee {} for period {}-{}:", 
+                            salarySlips.size(), employeeId, startDate, endDate);
+                for (Object slip : salarySlips) {
+                    if (slip instanceof Map) {
+                        Map<?, ?> slipMap = (Map<?, ?>) slip;
+                        logger.info("  - Slip: {}, Period: {} to {}", 
+                                   slipMap.get("name"), 
+                                   slipMap.get("start_date"), 
+                                   slipMap.get("end_date"));
+                    }
+                }
+                return true;
+            } else {
+                logger.info("No overlapping salary slips found for employee {} for period {}-{}", 
+                            employeeId, startDate, endDate);
+                return false;
+            }
+        } else {
+            logger.warn("No data in response for employee {} for period {}-{}", 
+                        employeeId, startDate, endDate);
+        }
+    } catch (Exception e) {
+        logger.error("Error checking salary for employee {} for period {}-{}: {}", 
+                     employeeId, startDate, endDate, e.getMessage());
+    }
+    return false;
+}
 
-//     private BigDecimal calculateComponentAmount(SalaryComponent component) {
-//         // Placeholder: In practice, fetch actual amounts from ERPNext earnings/deductions
-//         return new BigDecimal("1000.00"); // Example amount
-//     }
+// Version alternative plus stricte si vous voulez vérifier les mois spécifiquement
+public boolean checkSalaryForMonth(String employeeId, String startDate, String endDate) {
+    HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
+    String sid = sessionService.ensureImportSessionValid(session);
 
-//     private Paragraph createHeaderCell(String text) {
-//         return new Paragraph(text)
-//             .setBold()
-//             .setFontSize(11);
-//     }
+    if (sid == null) {
+        logger.error("Invalid session for employee {}, cannot check salary slips for period {}-{}", 
+                     employeeId, startDate, endDate);
+        return false;
+    }
 
-//     private Paragraph createSectionCell(String text) {
-//         return new Paragraph(text)
-//             .setBold()
-//             .setFontSize(10)
-//             .setBackgroundColor(new DeviceRgb(240, 240, 240));
-//     }
+    HttpHeaders headers = createHeaders(sid);
+    
+    try {
+        LocalDate start = LocalDate.parse(startDate);
+        LocalDate end = LocalDate.parse(endDate);
+        YearMonth targetMonth = YearMonth.from(start);
+        
+        // Chercher tous les salary slips de l'employé pour ce mois
+        String url = erpnextApiUrl + "?fields=[\"name\",\"start_date\",\"end_date\"]&filters=[[\"employee\",\"=\",\"" + employeeId + "\"]," +
+                   "[\"start_date\",\">=\",\"" + targetMonth.atDay(1) + "\"]," +
+                   "[\"start_date\",\"<=\",\"" + targetMonth.atEndOfMonth() + "\"]]" +
+                   "&limit_page_length=10";
 
-//     private Paragraph createTotalCell(String text) {
-//         return new Paragraph(text)
-//             .setBold()
-//             .setFontSize(11)
-//             .setBackgroundColor(new DeviceRgb(220, 220, 220));
-//     }
+        logger.info("Checking salary slips for employee {} for month {} with URL: {}", 
+                    employeeId, targetMonth, url);
+        
+        ResponseEntity<Map> response = restTemplate.exchange(
+            url,
+            HttpMethod.GET,
+            new HttpEntity<>(headers),
+            Map.class
+        );
 
-//     private Table createInfoCell(String label, String value) {
-//         Table table = new Table(1);
-//         table.addCell(new Paragraph(label).setFontSize(8).setFontColor(new DeviceRgb(100, 100, 100)));
-//         table.addCell(new Paragraph(value).setFontSize(10).setBold());
-//         return table;
-//     }
-// }
+        if (response.getBody() != null) {
+            Object data = response.getBody().get("data");
+            List<?> salarySlips = safeCastToList(data);
+            
+            if (!salarySlips.isEmpty()) {
+                logger.info("Found {} salary slips for employee {} for month {}:", 
+                            salarySlips.size(), employeeId, targetMonth);
+                for (Object slip : salarySlips) {
+                    if (slip instanceof Map) {
+                        Map<?, ?> slipMap = (Map<?, ?>) slip;
+                        logger.info("  - Slip: {}, Period: {} to {}", 
+                                   slipMap.get("name"), 
+                                   slipMap.get("start_date"), 
+                                   slipMap.get("end_date"));
+                    }
+                }
+                return true;
+            } else {
+                logger.info("No salary slips found for employee {} for month {}", 
+                            employeeId, targetMonth);
+                return false;
+            }
+        } else {
+            logger.warn("No data in response for employee {} for month {}", employeeId, targetMonth);
+        }
+    } catch (Exception e) {
+        logger.error("Error checking salary for employee {} for month: {}", employeeId, e.getMessage());
+    }
+    return false;
+}
+
+public int countSalary(String employeeId, String startDate, String endDate) {
+    HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
+    String sid = sessionService.ensureImportSessionValid(session);
+
+    if (sid != null) {
+        HttpHeaders headers = createHeaders(sid);
+        
+        // CORRECTION: Même logique que checkSalary avec chevauchement
+        String url = erpnextApiUrl + "?fields=[\"name\"]&filters=[[\"employee\",\"=\",\"" + employeeId + "\"]," +
+                   "[\"start_date\",\"<=\",\"" + endDate + "\"],[\"end_date\",\">=\",\"" + startDate + "\"]]";
+
+        try {
+            logger.info("Counting salary slips for employee {} for period {}-{} with URL: {}", 
+                        employeeId, startDate, endDate, url);
+            ResponseEntity<Map> response = restTemplate.exchange(
+                url,
+                HttpMethod.GET,
+                new HttpEntity<>(headers),
+                Map.class
+            );
+
+            if (response.getBody() != null) {
+                Object data = response.getBody().get("data");
+                List<?> salarySlips = safeCastToList(data);
+                logger.info("Found {} salary slips for employee {} for period {}-{}", 
+                            salarySlips.size(), employeeId, startDate, endDate);
+                return salarySlips.size();
+            }
+        } catch (Exception e) {
+            logger.error("Error counting salary slips for employee {} for period {}-{}: {}", 
+                         employeeId, startDate, endDate, e.getMessage());
+        }
+    }
+    return 0;
+}
+
+    private String createSalarySlipWithBaseSalary(String employeeId, String startDate, String endDate,
+                                              Double baseSalary, Map<String, Object> salaryStructureAssignment) {
+    HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
+    String sid = sessionService.ensureImportSessionValid(session);
+             
+    if (sid != null) {
+        HttpHeaders headers = createHeaders(sid);
+        String url = erpnextApiUrl;
+
+        // Préparer le payload
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("doctype", "Salary Slip");
+        payload.put("employee", employeeId);
+        payload.put("start_date", startDate);
+        payload.put("end_date", endDate);
+        payload.put("posting_date", LocalDate.now().toString());
+        payload.put("payroll_frequency", "Monthly");
+        payload.put("gross_pay", baseSalary);
+        payload.put("net_pay", baseSalary); // Peut être ajusté selon la logique métier
+        payload.put("status", "Submitted");
+
+        // Récupérer les détails de l'employé
+        Map<String, Object> employeeDetails = getEmployeeDetails(employeeId);
+        if (employeeDetails != null) {
+            payload.put("company", employeeDetails.getOrDefault("company", "Your Company"));
+            payload.put("salary_structure", employeeDetails.getOrDefault("salary_structure", "g1"));
+        } else {
+            return "Error: Unable to fetch employee details";
+        }
+
+        // Ajouter les informations du Salary Structure Assignment si disponible
+        if (salaryStructureAssignment != null) {
+            payload.put("salary_structure", salaryStructureAssignment.getOrDefault("salary_structure", "g1"));
+            payload.put("base", salaryStructureAssignment.getOrDefault("base", baseSalary));
+        }
+
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.POST, entity, Map.class);
+
+            if (response.getStatusCode().is2xxSuccessful()) {
+                Map<String, Object> responseBody = response.getBody();
+                if (responseBody != null && responseBody.containsKey("data")) {
+                    Map<String, Object> data = (Map<String, Object>) responseBody.get("data");
+                    String slipName = (String) data.get("name");
+                    logger.info("Successfully created salary slip: {} for employee: {} for period: {} to {}", 
+                               slipName, employeeId, startDate, endDate);
+                    return slipName;
+                }
+            }
+            return "Error: Failed to create salary slip - " + response.getStatusCode();
+        } catch (Exception e) {
+            logger.error("Error creating salary slip for employee {} for period {} to {}: {}", 
+                        employeeId, startDate, endDate, e.getMessage());
+            return "Error: Failed to create salary slip - " + e.getMessage();
+        }
+    }
+    return "Error: Invalid session or unable to create salary slip";
+}
+    // Méthodes utilitaires existantes
+
+    private HttpHeaders createHeaders(String sid) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.add("Cookie", "sid=" + sid);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.setAccept(List.of(MediaType.APPLICATION_JSON));
+        return headers;
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<Map<String, Object>> safeCastToList(Object data) {
+        if (data instanceof List) {
+            return (List<Map<String, Object>>) data;
+        } else if (data instanceof Map) {
+            return Collections.singletonList((Map<String, Object>) data);
+        }
+        return Collections.emptyList();
+    }
+
+    private SalarySlip convertToSalarySlip(Map<String, Object> map) {
+        SalarySlip slip = new SalarySlip();
+        slip.setName((String) map.get("name"));
+        slip.setGrossPay(Double.parseDouble(map.getOrDefault("gross_pay", "0.0").toString()));
+        slip.setNetPay(Double.parseDouble(map.getOrDefault("net_pay", "0.0").toString()));
+        return slip;
+    }
+
+    private Map<String, Object> getEmployeeDetails(String employeeId) {
+        HttpSession session = ((ServletRequestAttributes) RequestContextHolder.currentRequestAttributes()).getRequest().getSession();
+        String sid = sessionService.ensureImportSessionValid(session);
+        
+        if (sid != null) {
+            HttpHeaders headers = createHeaders(sid);
+            String encodedEmployeeId = URLEncoder.encode(employeeId, StandardCharsets.UTF_8);
+            String url = erpnextBaseUrl + "/api/resource/Employee/" + encodedEmployeeId + 
+                        "?fields=[\"company\",\"salary_structure\"]";
+
+            try {
+                ResponseEntity<Map> response = restTemplate.exchange(
+                    url,
+                    HttpMethod.GET,
+                    new HttpEntity<>(headers),
+                    Map.class
+                );
+
+                if (response.getStatusCode().is2xxSuccessful()) {
+                    Map<String, Object> responseBody = response.getBody();
+                    if (responseBody != null && responseBody.containsKey("data")) {
+                        return (Map<String, Object>) responseBody.get("data");
+                    }
+                }
+            } catch (Exception e) {
+                logger.error("Error fetching employee details: {}", e.getMessage());
+            }
+        }
+        return null;
+    }
+
+    // Méthode de compatibilité avec l'ancien code
+    @Deprecated
+    public String generateSalarySlips(String employeeId, String startDate, String endDate) {
+        return generateSalarySlips(employeeId, startDate, endDate, null);
+    }
+}

@@ -2,6 +2,7 @@ package com.newapp.Erpnext.models;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 public class Employee {
     private String id;
@@ -15,7 +16,38 @@ public class Employee {
     private String status; // Active, On Leave, Terminated, etc.
     private String contractType;
     private List<Salary> salaries;
+    private double baseSalary;
+    private Map<String, Double> earnings;
+    private Map<String, Double> deductions;
+
+        
     
+   
+
+    public Map<String, Double> getEarnings() {
+        return earnings;
+    }
+
+    public void setEarnings(Map<String, Double> earnings) {
+        this.earnings = earnings;
+    }
+
+    public Map<String, Double> getDeductions() {
+        return deductions;
+    }
+
+    public void setDeductions(Map<String, Double> deductions) {
+        this.deductions = deductions;
+    }
+
+    public double getBaseSalary() {
+        return baseSalary;
+    }
+
+    public void setBaseSalary(double baseSalary) {
+        this.baseSalary = baseSalary;
+    }
+
     // Constructeurs
     public Employee() {
     }

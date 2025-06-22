@@ -31,10 +31,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.text.NumberFormat;
 import java.util.*;
-import java.util.List;
 import java.util.stream.Collectors;
-
-import java.util.Locale;
 import java.awt.Color;
 
 @Service
@@ -213,67 +210,204 @@ public class EmployeeService {
         
         return null;
     }
+
+public List<Salary> getEmployeeSalaries(String employeeId) {
+    HttpHeaders headers = createHeaders();
+    List<Salary> salaries = new ArrayList<>();
+
+    try {
+        // 1. Récupérer la liste des Salary Slips (simplifiée)
+        String listUrl = String.format("%s/api/resource/Salary Slip?fields=[\"name\"]&filters=[[\"employee\",\"=\",\"%s\"]]", 
+                                     erpNextUrl, employeeId);
+        
+        ResponseEntity<Map> listResponse = restTemplate.exchange(
+            listUrl, 
+            HttpMethod.GET, 
+            new HttpEntity<>(headers), 
+            Map.class
+        );
+
+        if (listResponse.getStatusCode() != HttpStatus.OK || listResponse.getBody() == null) {
+            // logger.error("Erreur lors de la récupération des fiches de paie pour l'employé {}", employeeId);
+            return salaries;
+        }
+
+        List<Map<String, Object>> salarySlips = (List<Map<String, Object>>) listResponse.getBody().get("data");
+
+        // 2. Pour chaque fiche, récupérer les détails complets
+        for (Map<String, Object> slip : salarySlips) {
+            String slipId = (String) slip.get("name");
+            String detailUrl = String.format("%s/api/resource/Salary Slip/%s", erpNextUrl, slipId);
+
+            ResponseEntity<Map> detailResponse = restTemplate.exchange(
+                detailUrl, 
+                HttpMethod.GET, 
+                new HttpEntity<>(headers), 
+                Map.class
+            );
+
+            if (detailResponse.getStatusCode() == HttpStatus.OK && detailResponse.getBody() != null) {
+                Map<String, Object> slipData = (Map<String, Object>) detailResponse.getBody().get("data");
+                
+                // ⚡ Construction de l'objet Salary avec TOUS les champs
+                Salary salary = new Salary();
+                salary.setId(slipId);
+                salary.setEmployeeId(employeeId);
+                
+                
+                // 📅 Gestion des dates (avec vérification de null)
+                if (slipData.get("posting_date") != null) {
+                    salary.setPaymentDate(LocalDate.parse(
+                        (String) slipData.get("posting_date"), 
+                        DateTimeFormatter.ISO_DATE
+                    ));
+                }
+                
+                if (slipData.get("start_date") != null) {
+                    LocalDate startDate = LocalDate.parse(
+                        (String) slipData.get("start_date"), 
+                        DateTimeFormatter.ISO_DATE
+                    );
+                    salary.setMonth(startDate.getYear() + "-" + String.format("%02d", startDate.getMonthValue()));
+                }
+
+                // 💰 Gestion des montants (avec sécurité)
+                salary.setGrossAmount(getBigDecimal(slipData.get("gross_pay")));
+                salary.setNetAmount(getBigDecimal(slipData.get("net_pay")));
+                salary.setTaxAmount(getBigDecimal(slipData.get("total_deduction")));
+                
+                // 🏷️ Statut et autres métadonnées
+                salary.setStatus((String) slipData.get("status"));
+                 // Si disponible
+
+                // ✨ Récupération des composants (earnings/deductions)
+                salary.setEarnings(extractComponents((List<Map<String, Object>>) slipData.get("earnings")));
+                salary.setDeductions(extractComponents((List<Map<String, Object>>) slipData.get("deductions")));
+
+                salaries.add(salary);
+                // logger.debug("Salaire traité : {}", salary.getId());
+            } else {
+                // logger.warn("Échec de récupération des détails pour la fiche {}", slipId);
+            }
+        }
+    } catch (Exception e) {
+        // logger.error("Erreur critique lors de la récupération des salaires pour l'employé {} : {}", employeeId, e.getMessage(), e);
+    }
+
+    return salaries;
+}
+
+// 🛡️ Méthode helper pour convertir safely en BigDecimal
+private BigDecimal getBigDecimal(Object value) {
+    if (value == null) return BigDecimal.ZERO;
+    try {
+        return new BigDecimal(value.toString());
+    } catch (NumberFormatException e) {
+        // logger.warn("Erreur de conversion en BigDecimal : {}", value);
+        return BigDecimal.ZERO;
+    }
+}
+
+// 🔄 Extraction des composants (earnings/deductions)
+private Map<String, BigDecimal> extractComponents(List<Map<String, Object>> components) {
+    Map<String, BigDecimal> result = new HashMap<>();
+    if (components != null) {
+        for (Map<String, Object> comp : components) {
+            try {
+                String key = (String) comp.get("salary_component");
+                BigDecimal value = getBigDecimal(comp.get("amount"));
+                if (key != null && value != null) {
+                    result.put(key, value);
+                }
+            } catch (Exception e) {
+                // logger.warn("Erreur lors de l'extraction d'un composant : {}", e.getMessage());
+            }
+        }
+    }
+    return result;
+}
     
     /**
      * Récupère les salaires d'un employé
      */
-    public List<Salary> getEmployeeSalaries(String employeeId) {
-        HttpHeaders headers = createHeaders();
-        HttpEntity<String> entity = new HttpEntity<>(headers);
+//     public List<Salary> getEmployeeSalaries(String employeeId) {
+//         HttpHeaders headers = createHeaders();
+//         HttpEntity<String> entity = new HttpEntity<>(headers);
         
-        String url = erpNextUrl + "/api/resource/Salary Slip?fields=[\"name\",\"posting_date\",\"start_date\",\"end_date\",\"gross_pay\",\"net_pay\",\"total_deduction\",\"status\"]&filters=[[\"employee\",\"=\",\"" + employeeId + "\"]]";        
-        ResponseEntity<Map> response = restTemplate.exchange(
-            url,
-            HttpMethod.GET,
-            entity,
-            Map.class
-        );
+//         String url = erpNextUrl + "/api/resource/Salary Slip?fields=[\"name\",\"posting_date\",\"start_date\",\"end_date\",\"gross_pay\",\"net_pay\",\"total_deduction\",\"status\",\"earnings\",\"deductions\"]&filters=[[\"employee\",\"=\",\"" + employeeId + "\"]]";        
+//         ResponseEntity<Map> response = restTemplate.exchange(
+//             url,
+//             HttpMethod.GET,
+//             entity,
+//             Map.class
+//         );
         
-        List<Salary> salaries = new ArrayList<>();
+//         List<Salary> salaries = new ArrayList<>();
         
-        if (response.getStatusCode() == HttpStatus.OK) {
-            Map<String, Object> responseBody = response.getBody();
-            List<Map<String, Object>> data = (List<Map<String, Object>>) responseBody.get("data");
+//         if (response.getStatusCode() == HttpStatus.OK) {
+//             Map<String, Object> responseBody = response.getBody();
+//             List<Map<String, Object>> data = (List<Map<String, Object>>) responseBody.get("data");
             
-            for (Map<String, Object> item : data) {
-                Salary salary = new Salary();
-                salary.setId((String) item.get("name"));
-                salary.setEmployeeId(employeeId);
+//             for (Map<String, Object> item : data) {
+//                 Salary salary = new Salary();
+//                 salary.setId((String) item.get("name"));
+//                 salary.setEmployeeId(employeeId);
                 
-                // Conversion de la date de paiement
-                if (item.get("posting_date") != null) {
-                    String dateStr = (String) item.get("posting_date");
-                    salary.setPaymentDate(LocalDate.parse(dateStr, DateTimeFormatter.ISO_DATE));
-                }
+//                 // Conversion de la date de paiement
+//                 if (item.get("posting_date") != null) {
+//                     String dateStr = (String) item.get("posting_date");
+//                     salary.setPaymentDate(LocalDate.parse(dateStr, DateTimeFormatter.ISO_DATE));
+//                 }
                 
-                // Déterminer le mois à partir des dates de début et de fin
-                if (item.get("start_date") != null) {
-                    String startDateStr = (String) item.get("start_date");
-                    LocalDate startDate = LocalDate.parse(startDateStr, DateTimeFormatter.ISO_DATE);
-                    salary.setMonth(startDate.getYear() + "-" + String.format("%02d", startDate.getMonthValue()));
-                }
+//                 // Déterminer le mois à partir des dates de début et de fin
+//                 if (item.get("start_date") != null) {
+//                     String startDateStr = (String) item.get("start_date");
+//                     LocalDate startDate = LocalDate.parse(startDateStr, DateTimeFormatter.ISO_DATE);
+//                     salary.setMonth(startDate.getYear() + "-" + String.format("%02d", startDate.getMonthValue()));
+//                 }
                 
-                // Conversion des montants
-                if (item.get("gross_pay") != null) {
-                    salary.setGrossAmount(new BigDecimal(item.get("gross_pay").toString()));
-                }
+//                 // Conversion des montants
+//                 if (item.get("gross_pay") != null) {
+//                     salary.setGrossAmount(new BigDecimal(item.get("gross_pay").toString()));
+//                 }
                 
-                if (item.get("net_pay") != null) {
-                    salary.setNetAmount(new BigDecimal(item.get("net_pay").toString()));
-                }
+//                 if (item.get("net_pay") != null) {
+//                     salary.setNetAmount(new BigDecimal(item.get("net_pay").toString()));
+//                 }
                 
-                if (item.get("total_deduction") != null) {
-                    salary.setTaxAmount(new BigDecimal(item.get("total_deduction").toString()));
-                }
+//                 if (item.get("earnings") != null) {
+//     List<Map<String, Object>> earningsList = (List<Map<String, Object>>) item.get("earnings");
+//     Map<String, BigDecimal> earningsMap = new HashMap<>();
+//     for (Map<String, Object> earning : earningsList) {
+//         earningsMap.put(
+//             (String) earning.get("salary_component"),
+//             new BigDecimal(earning.get("amount").toString())
+//         );
+//     }
+//     salary.setEarnings(earningsMap);
+// }
+
+// // Récupération des déductions
+// if (item.get("deductions") != null) {
+//     List<Map<String, Object>> deductionsList = (List<Map<String, Object>>) item.get("deductions");
+//     Map<String, BigDecimal> deductionsMap = new HashMap<>();
+//     for (Map<String, Object> deduction : deductionsList) {
+//         deductionsMap.put(
+//             (String) deduction.get("salary_component"),
+//             new BigDecimal(deduction.get("amount").toString())
+//         );
+//     }
+//     salary.setDeductions(deductionsMap);
+// }
                 
-                salary.setStatus((String) item.get("status"));
+//                 salary.setStatus((String) item.get("status"));
                 
-                salaries.add(salary);
-            }
-        }
+//                 salaries.add(salary);
+//             }
+//         }
         
-        return salaries;
-    }
+//         return salaries;
+//     }
     
     /**
      * Génère un PDF avec les informations de l'employé
