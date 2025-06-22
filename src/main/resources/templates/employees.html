@@ -50,6 +50,18 @@
                             <button type="submit" class="btn btn-primary me-2">Filtrer</button>
                             <button type="reset" class="btn btn-secondary" id="reset-filters">Réinitialiser</button>
                         </div>
+                        <div class="filter-group">
+                            <label for="sortBy">Trier par</label>
+                            <select id="sortBy" name="sortBy" onchange="this.form.submit()">
+                                <option value="">Aucun tri</option>
+                                <option value="hireDateAsc" ${sortBy == 'hireDateAsc' ? 'selected' : ''}>Date d'embauche (plus ancien)</option>
+                                <option value="hireDateDesc" ${sortBy == 'hireDateDesc' ? 'selected' : ''}>Date d'embauche (plus récent)</option>
+                                <option value="nameAsc" ${sortBy == 'nameAsc' ? 'selected' : ''}>Nom (A-Z)</option>
+                                <option value="nameDesc" ${sortBy == 'nameDesc' ? 'selected' : ''}>Nom (Z-A)</option>
+                                <option value="totalGrossDesc" ${sortBy == 'totalGrossDesc' ? 'selected' : ''}>Total brut (décroissant)</option>
+                                <option value="totalNetDesc" ${sortBy == 'totalNetDesc' ? 'selected' : ''}>Total net (décroissant)</option>
+                            </select>
+                        </div>
                     </form>
                 </div>
             </div>

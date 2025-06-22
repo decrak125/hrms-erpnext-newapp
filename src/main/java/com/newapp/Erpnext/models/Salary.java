@@ -2,6 +2,8 @@ package com.newapp.Erpnext.models;
 
 import java.time.LocalDate;
 import java.math.BigDecimal;
+import java.util.Map;
+import java.util.HashMap;
 
 public class Salary {
     private String id;
@@ -12,7 +14,25 @@ public class Salary {
     private BigDecimal netAmount;
     private BigDecimal taxAmount;
     private String status; // Draft, Paid, etc.
+    private Map<String, BigDecimal> earnings;
+    private Map<String, BigDecimal> deductions;  // Ajout des composants de salaire
     
+    public Map<String, BigDecimal> getEarnings() {
+        return earnings;
+    }
+
+    public void setEarnings(Map<String, BigDecimal> earnings) {
+        this.earnings = earnings;
+    }
+
+    public Map<String, BigDecimal> getDeductions() {
+        return deductions;
+    }
+
+    public void setDeductions(Map<String, BigDecimal> deductions) {
+        this.deductions = deductions;
+    }
+
     // Constructeurs
     public Salary() {
     }
@@ -94,4 +114,6 @@ public class Salary {
     public void setStatus(String status) {
         this.status = status;
     }
+
+    
 }
