@@ -189,4 +189,9 @@ public class SessionService {
         String sid = (String) session.getAttribute(IMPORT_SESSION_SID_KEY);
         return sid != null && isValidErpnextSid(sid);
     }
+
+    public HttpEntity<?> exchange(String url, HttpMethod get, HttpEntity<?> entity, Class<Map> class1) {
+        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'exchange'");
+    }
 }

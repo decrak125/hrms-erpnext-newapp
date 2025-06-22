@@ -109,7 +109,7 @@
                                     <td>
                                         <div th:each="entry : ${detail.salaryComponentDetails}" class="salary-component">
                                             <span class="salary-label" th:text="${entry.key}"></span>
-                                            <span class="salary-value" th:text="${#numbers.formatDecimal(entry.value, 0, 'COMMA', 2, 'POINT')} + ' €'"></span>
+                                            <span class="salary-value" th:text="${#numbers.formatDecimal(T(java.lang.Math).abs(entry.value), 0, 'COMMA', 2, 'POINT')} + ' €'"></span>
                                         </div>
                                         <div th:if="${detail.salaryComponentDetails.isEmpty()}" class="text-muted text-center py-2">
                                             <i class="bi bi-exclamation-circle me-2"></i>Aucune donnée disponible

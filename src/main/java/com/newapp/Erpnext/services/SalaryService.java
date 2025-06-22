@@ -61,6 +61,7 @@ public class SalaryService {
         return null;
     }
 
+
     private void addHeader(Document document) throws Exception {
         Font titleFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 18);
         Font headerFont = FontFactory.getFont(FontFactory.HELVETICA_BOLD, 12);
@@ -188,7 +189,7 @@ public class SalaryService {
         if (totalDeductions.compareTo(BigDecimal.ZERO) > 0) {
             addSalaryRow(salaryTable, "Cotisations sociales", totalDeductions.subtract(salary.getTaxAmount() != null ? salary.getTaxAmount() : BigDecimal.ZERO), "Retenue", normalFont, currencyFormat);
         }
-
+        
         // Taxes
         if (salary.getTaxAmount() != null && salary.getTaxAmount().compareTo(BigDecimal.ZERO) > 0) {
             addSalaryRow(salaryTable, "Impôts sur le revenu", salary.getTaxAmount(), "Retenue", normalFont, currencyFormat);

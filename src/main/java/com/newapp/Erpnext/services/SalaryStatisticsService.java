@@ -54,7 +54,7 @@ public class SalaryStatisticsService {
                 YearMonth yearMonth = YearMonth.of(year, month);
                 int lastDay = yearMonth.lengthOfMonth();
                 
-                String filters = String.format("[[\"posting_date\",\"between\",[\"'%d-%02d-01'\",\"'%d-%02d-%02d'\"]]]",
+                String filters = String.format("[[\"start_date\",\"between\",[\"'%d-%02d-01'\",\"'%d-%02d-%02d'\"]]]",
                         year, month, year, month, lastDay);
 
                 HttpHeaders headers = new HttpHeaders();
@@ -140,7 +140,7 @@ public class SalaryStatisticsService {
                 YearMonth yearMonth = YearMonth.of(year, month);
                 int lastDay = yearMonth.lengthOfMonth();
                 
-                String filters = String.format("[[\"posting_date\",\"between\",[\"'%d-%02d-01'\",\"'%d-%02d-%02d'\"]]]",
+                String filters = String.format("[[\"start_date\",\"between\",[\"'%d-%02d-01'\",\"'%d-%02d-%02d'\"]]]",
                         year, month, year, month, lastDay);
 
                 HttpHeaders headers = new HttpHeaders();
