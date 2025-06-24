@@ -1,5 +1,6 @@
 package com.newapp.Erpnext.controller;
 
+import com.newapp.Erpnext.entity.EmployeeEntity;
 import com.newapp.Erpnext.models.Employee;
 import com.newapp.Erpnext.models.Salary;
 import com.newapp.Erpnext.services.EmployeeService;
@@ -63,6 +64,30 @@ public class EmployeeController {
         model.addAttribute("employees", employees);
         return "employees";
     }
+
+    // @GetMapping("/count")
+    // public String getEmployeeCount() {
+    //     try {
+    //         Long count = employeeService.getTotalEmployeeCount();
+    //         return "Total employees: " + count;
+    //     } catch (Exception e) {
+    //         return "Error counting employees: " + e.getMessage();
+    //     }
+    // }
+
+    // @GetMapping("/first5")
+    // public String getFirst5Employees() {
+    //     try {
+    //         List<EmployeeEntity> employees = employeeService.getFirst5Employees();
+    //         StringBuilder result = new StringBuilder("First 5 employees:\n");
+    //         for (EmployeeEntity emp : employees) {
+    //             result.append("- ").append(emp.toString()).append("\n");
+    //         }
+    //         return result.toString();
+    //     } catch (Exception e) {
+    //         return "Error fetching employees: " + e.getMessage();
+    //     }
+    // }
 
     @GetMapping("/{id}")
     public String getEmployeeDetails(@PathVariable String id, Model model) {

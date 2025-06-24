@@ -27,7 +27,7 @@ public class SecurityConfig {
                     "/salaries", "/salaries/**", "/salaries/pdf/**",
                     "/import", "/import/**",
                     "/salary-statistics", "/salary-statistics/**",
-                    "/error").permitAll()
+                    "/error","/autres","/autres/**","/hrms-export","/hrms-export/**","/payroll","/payroll/**","/update","/update/**").permitAll()
                 .anyRequest().authenticated()
             )
             .formLogin(form -> form
